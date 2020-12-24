@@ -1,17 +1,17 @@
-# HonoursProject_YanPengGao
+The implementation of Pix2Pix and CycleGAN.
 
-Pix2Pix.ipynb and Cyclegan.ipynb are used to start the training of the models
+## File Structure
 
-Test.ipynb writes the test results to /Output
-
-As the components of the model are shared, discriminators and generators are in a seperate folder.
-
-/data contains the images
-
-/datasets contains the custom pytorch datasets
-
-/models is where the saved model goes
-
-/Outputs is the output of the images, it currently has results from Pix2Pix with Photo-Sketch
+- Pix2Pix.ipynb and Cyclegan.ipynb are used to train the models
+- Test.ipynb loads a model and applies the test set generating images
+- Tensorboard_Logger.py contains the necessary functions to write images and losses to a tensorboard to monitor training
+- /data contains the training and test images
+- /datasets contains the custom dataset pytorch class needed to read in the iamges
+- /models is where the saved models go
+- /Outputs is where we write images to
 
 Note that a small random subset of Outputs are shown. The folders /data and /models are empty in order to upload to Github with size limits.
+
+## Code References
+The authors of Pix2Pix and CycleGAN provided the [repository](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix). Our implementation was inspired by the general structure. The Resnet Generator and ImagePool was implemented directly following their implementation.
+[MTLI Photo-Sketch](https://github.com/mtli/PhotoSketch) was another repository referenced. The Photo-Sketch dataset was downloaded from the [project page](http://www.cs.cmu.edu/~mengtial/proj/sketch/). The main references from this codebase was creating a custom dataset class and calculating adversarial loss when dealing with multiple real samples.
