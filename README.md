@@ -10,8 +10,10 @@ The implementation of Pix2Pix and CycleGAN.
 - /models is where the saved models go
 - /Outputs is where we write images to
 
-Note that a small random subset of Outputs are shown. The folders /data and /models are empty in order to upload to Github with size limits.
+Note that a small random subset of Outputs are shown. The contents in /data and /models are placed in [Releases](https://github.com/mkomeili/Image-to-sketch-YanPengGao/releases) due to large file sizes. To duplicate the results, unzip and places the contents from data.zip and models.zip inside the /data and /models folders.
 
 ## Code References
 The authors of Pix2Pix and CycleGAN provided the [repository](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix). Our implementation was inspired by the general structure. The Resnet Generator, PatchDiscriminator and ImagePool was implemented directly following their implementation.
-[MTLI Photo-Sketch](https://github.com/mtli/PhotoSketch) was another repository referenced. The Photo-Sketch dataset was downloaded from the [project page](http://www.cs.cmu.edu/~mengtial/proj/sketch/). The main references from this codebase was creating a custom dataset class and calculating adversarial loss when dealing with multiple real samples.
+[MTLI Photo-Sketch](https://github.com/mtli/PhotoSketch) was another repository referenced.
+
+The Photo-Sketch dataset was downloaded from the [project page](http://www.cs.cmu.edu/~mengtial/proj/sketch/). The main references from this codebase was creating a custom dataset class and calculating adversarial loss when dealing with multiple real samples.
