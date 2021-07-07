@@ -9,11 +9,11 @@ import platform
 #from https://github.com/mtli/PhotoSketch/tree/master/data
 if platform.system() == 'Windows':
     IMG_EXTENSIONS = [
-        '.jpg', '.jpeg', '.png', '.ppm', '.bmp',
+        '.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.svg',
     ]
 else:
     IMG_EXTENSIONS = [
-        '.jpg', '.JPG', '.jpeg', '.JPEG',
+        '.jpg', '.JPG', '.jpeg', '.JPEG', '.svg', '.SVG',
         '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',
     ]
     
@@ -73,12 +73,16 @@ class PairedDataset(data.Dataset):
         
         sketches = []
         i = 1
+        temppath = None
+        flag = False
         while(True):
             if self.name == "sketchy":
                 temppath = sketch_path + "-"+str(i)+".png"
             elif self.name == "aligned":
                 temppath = sketch_path + "_0"+str(i)+".png"
-            
+            elif self.name == "tactile":
+                temppath = sketch_path.replace("s_", "t_")+".svg"
+                flag = True
             if (not os.path.isfile(temppath)):
                 break
             sketch = Image.open(temppath).convert(mode="L") # https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
@@ -92,10 +96,9 @@ class PairedDataset(data.Dataset):
             sketch = transforms.Normalize((0.5,), (0.5,))(sketch)
             sketches.append(sketch)
             i +=1
-        #print(i-1)
-#         import random
+            if flag:
+                break
         if len(sketches) > 5:
-#             print(sketches)
             sketches = sketches[0:5]
         if len(sketches) == 0:
             print("somethings wrong", sketch_path,"~~~",self.image_path[i])
