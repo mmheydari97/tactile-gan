@@ -72,16 +72,16 @@ class PairedDataset(data.Dataset):
         sketch_path= self.image_path[i].replace("photo", "sketch").replace(".jpg","")
         
         sketches = []
-        i = 1
+        j = 1
         temppath = None
         flag = False
         while(True):
             if self.name == "sketchy":
-                temppath = sketch_path + "-"+str(i)+".png"
+                temppath = sketch_path + "-"+str(j)+".png"
             elif self.name == "aligned":
-                temppath = sketch_path + "_0"+str(i)+".png"
+                temppath = sketch_path + "_0"+str(j)+".png"
             elif self.name == "tactile":
-                temppath = sketch_path.replace("s_", "t_")+".svg"
+                temppath = sketch_path.replace("s_", "t_")+".jpg"
                 flag = True
             if (not os.path.isfile(temppath)):
                 break
@@ -95,7 +95,7 @@ class PairedDataset(data.Dataset):
             sketch = transforms.ToTensor()(sketch)
             sketch = transforms.Normalize((0.5,), (0.5,))(sketch)
             sketches.append(sketch)
-            i +=1
+            j +=1
             if flag:
                 break
         if len(sketches) > 5:
