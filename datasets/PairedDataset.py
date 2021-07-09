@@ -24,7 +24,7 @@ def is_image_file(filename):
 
 
 class PairedDataset(data.Dataset):
-    def __init__(self, a_dir,b_dir,name="sketchy",size=256,flip=True,jitter=True,erase=True): #image_dir should be unused for now
+    def __init__(self, a_dir,b_dir,name="sketchy",size=256,flip=True,jitter=True,erase=True, colored_sketch=True): #image_dir should be unused for now
         super(PairedDataset, self).__init__()
         self.size = size
         self.a_dir = a_dir
@@ -33,6 +33,7 @@ class PairedDataset(data.Dataset):
         self.flip = flip
         self.jitter = jitter
         self.erase = erase
+        self.colored_sketch = colored_sketch
         
 #         path = os.path.abspath(os.getcwd())
 #         path = os.path.join(path,"train", "photo")
@@ -85,7 +86,10 @@ class PairedDataset(data.Dataset):
                 flag = True
             if (not os.path.isfile(temppath)):
                 break
-            sketch = Image.open(temppath).convert(mode="L") # https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
+            sketch = Image.open(temppath) # https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
+            
+            if not self.colored_sketch:
+                sketch = sketch.convert(mode="L")
             if if_flip:
                 sketch = sketch.transpose(Image.FLIP_LEFT_RIGHT)
             

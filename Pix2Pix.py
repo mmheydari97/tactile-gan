@@ -161,10 +161,11 @@ class Train_Pix2Pix:
 
                 #Get the second half of the loss. Compare real predictions to labels of 1
                 #Here we have 5 real sketches per image, so we loop it 5 times.
-                n = real_B.shape[1]
+                n = real_B.shape[1]//opt.output_dim
                 loss_D_real_set = torch.empty(n, device=self.device)
                 for i in range(n):
-                    sel_B = real_B[:, i, :, :].unsqueeze(1)
+                    sel_B = real_B[:, i:i+opt.output_dim, :, :] #.unsqueeze(1)
+        
                     real_AB = torch.cat((real_A, sel_B), 1)
                     pred_real = self.netD(real_AB)
                     if not(opt.loss == "wloss"): 
@@ -285,9 +286,10 @@ class Train_Pix2Pix:
         '''
         L1 Loss for Pix2Pix. Compares the Pixel Loss between the fake image and it's closest real image
         '''
-        fake_B_expand = fake_B.expand(-1, 5, -1, -1)
-        L1 = torch.abs(fake_B_expand - real_B)
-        L1 = L1.view(-1, 5, real_B.shape[2]*real_B.shape[3])
+        if real_B.shape[1] != fake_B.shape[1]:
+            fake_B = fake_B.expand(-1, real_B.shape[1], -1, -1)
+        L1 = torch.abs(fake_B - real_B)
+        L1 = L1.view(-1, real_B.shape[1], real_B.shape[2]*real_B.shape[3])
         L1 = torch.mean(L1, 2)
         min_L1, min_idx = torch.min(L1, 1)
         loss_G_L1 = torch.mean(min_L1)
