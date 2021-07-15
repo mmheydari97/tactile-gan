@@ -53,6 +53,8 @@ class PairedDataset(data.Dataset):
         if_flip = self.flip and random.random() < 0.5
         
         img = Image.open(self.image_path[i]).convert('RGB')
+        img = expand2square(img)
+        
         if if_flip:
             img = img.transpose(Image.FLIP_LEFT_RIGHT)
         if self.jitter:
@@ -87,7 +89,7 @@ class PairedDataset(data.Dataset):
             if (not os.path.isfile(temppath)):
                 break
             sketch = Image.open(temppath) # https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
-            
+            sketch = expand2square(sketch)
             if not self.colored_sketch:
                 sketch = sketch.convert(mode="L")
             if if_flip:
@@ -112,7 +114,19 @@ class PairedDataset(data.Dataset):
     def __len__(self):
         return len(self.image_path) 
     
-
+    @staticmethod
+    def expand2square(pil_img):
+        width, height = pil_img.size
+        if width == height:
+            return pil_img
+        elif width > height:
+            result = Image.new(pil_img.mode, (width, width), list(pil_img.getdata())[1])
+            result.paste(pil_img, (0, (width - height) // 2))
+            return result
+        else:
+            result = Image.new(pil_img.mode, (height, height), list(img.getdata())[1])
+            result.paste(pil_img, ((height - width) // 2, 0))
+            return result
 
 
 
