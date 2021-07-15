@@ -308,7 +308,7 @@ class Args():
         self.batch_size = 16 
         self.test_batch_size = 16
         self.input_dim = 3
-        self.output_dim = 1
+        self.output_dim = 3
         self.gen_filters =64 #starting filters for the generator
         self.disc_filters =64 #starting filters for the discriminator
         self.epoch_count =1 #starting epoch, useful if we're loading in a half trained model, we can change starting epoch
@@ -333,18 +333,18 @@ class Args():
         self.flip = True #image augementation flip horizontally
         self.jitter = True #image augementation vary color, brightness and contrast
         self.erase = True #image augementation randomly erase a portion of input image
-        self.folder_name = "wgan_sketchy_resnet" #where we want to save the model to
+        self.folder_name = "wgan_tactile_unet" #where we want to save the model to
     
     
 opt = Args()
 
 photo_path_train = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"train", "photo")
 sketch_path_train = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"train", "sketch")
-train_set = get_dataset(photo_path_train,sketch_path_train, opt,flip=True,jitter=True,erase= False)
+train_set = get_dataset(photo_path_train,sketch_path_train, opt,flip=True,jitter=True,erase= False, colored_s=True)
 
 photo_path_test = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"test", "photo")
 sketch_path_test = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"test", "sketch")
-testing_set =  get_dataset(photo_path_test,sketch_path_test, opt,flip=False,jitter=False,erase= False)
+testing_set =  get_dataset(photo_path_test,sketch_path_test, opt,flip=False,jitter=False,erase= False, colored_s=True)
 
 
 # In[7]:
