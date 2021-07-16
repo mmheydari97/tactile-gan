@@ -53,7 +53,7 @@ class PairedDataset(data.Dataset):
         if_flip = self.flip and random.random() < 0.5
         
         img = Image.open(self.image_path[i]).convert('RGB')
-        img = expand2square(img)
+        img = PairedDataset.expand2square(img)
         
         if if_flip:
             img = img.transpose(Image.FLIP_LEFT_RIGHT)
@@ -89,7 +89,7 @@ class PairedDataset(data.Dataset):
             if (not os.path.isfile(temppath)):
                 break
             sketch = Image.open(temppath) # https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
-            sketch = expand2square(sketch)
+            sketch = PairedDataset.expand2square(sketch)
             if not self.colored_sketch:
                 sketch = sketch.convert(mode="L")
             if if_flip:
