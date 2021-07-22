@@ -308,11 +308,11 @@ class Args():
         self.batch_size = 16 
         self.test_batch_size = 16
         self.input_dim = 3
-        self.output_dim = 3
+        self.output_dim = 1
         self.gen_filters =64 #starting filters for the generator
         self.disc_filters =64 #starting filters for the discriminator
         self.epoch_count =1 #starting epoch, useful if we're loading in a half trained model, we can change starting epoch
-        self.total_iters=3 #total epochs we're training for
+        self.total_iters=300 #total epochs we're training for
         self.iter_constant = 200 #how many epochs we keep the learning rate constant
         self.iter_decay = 200 #when we start decaying the learning rate
         self.lr = 0.0002
@@ -326,25 +326,25 @@ class Args():
         self.resblocks = 9 #number of resblocks in bottleneck if we're using resnet generator
         self.norm = "instance"
         self.gen = "UNet" # Resnet, UNet++, UNet, UNet-no-skips
-        self.disc= "Global" #Global, Patch
+        self.disc= "Patch" #Global, Patch
         self.loss = "wloss" #ls, bce, wloss
         self.paired_dataset = True
         self.dataset_name = "tactile" # "tactile", "aligned" or "sketchy"
         self.flip = True #image augementation flip horizontally
         self.jitter = True #image augementation vary color, brightness and contrast
         self.erase = True #image augementation randomly erase a portion of input image
-        self.folder_name = "wgan_tactile_unet" #where we want to save the model to
+        self.folder_name = "wgan_tactile_unet_patch" #where we want to save the model to
     
     
 opt = Args()
 
 photo_path_train = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"train", "photo")
 sketch_path_train = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"train", "sketch")
-train_set = get_dataset(photo_path_train,sketch_path_train, opt,flip=True,jitter=True,erase= False, colored_s=True)
+train_set = get_dataset(photo_path_train,sketch_path_train, opt,flip=True,jitter=True,erase= False, colored_s=False)
 
 photo_path_test = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"test", "photo")
 sketch_path_test = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"test", "sketch")
-testing_set =  get_dataset(photo_path_test,sketch_path_test, opt,flip=False,jitter=False,erase= False, colored_s=True)
+testing_set =  get_dataset(photo_path_test,sketch_path_test, opt,flip=False,jitter=False,erase= False, colored_s=False)
 
 
 # In[7]:
