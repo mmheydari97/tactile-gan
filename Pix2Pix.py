@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 # from google.colab import drive
@@ -13,7 +13,7 @@
 # get_ipython().run_line_magic('ls', '')
 
 
-# In[4]:
+# In[ ]:
 
 
 import torch
@@ -34,7 +34,7 @@ import torchvision.transforms as transforms
 
 
 from statistics import mean
-
+  
 
 from torch.nn import init
 import functools
@@ -49,7 +49,7 @@ from util import ImagePool, set_requires_grad,tensor_to_plt,init_weights, mkdir
 from Tensorboard_Logger import Logger
 
 
-# In[5]:
+# In[ ]:
 
 
 def get_scheduler(optimizer):
@@ -299,7 +299,7 @@ class Train_Pix2Pix:
         
 
 
-# In[6]:
+# In[ ]:
 
 
 class Args():
@@ -311,9 +311,9 @@ class Args():
         self.test_batch_size = 16
         self.input_dim = 3
         self.output_dim = 3
-        self.gen_filters =64 #starting filters for the generator
-        self.disc_filters =64 #starting filters for the discriminator
-        self.epoch_count = 0 #starting epoch, useful if we're loading in a half trained model, we can change starting epoch
+        self.gen_filters = 64 #starting filters for the generator
+        self.disc_filters = 64 #starting filters for the discriminator
+        self.epoch_count = 1 #starting epoch, useful if we're loading in a half trained model, we can change starting epoch
         self.total_iters = 1000 #total epochs we're training for
         self.iter_constant = 200 #how many epochs we keep the learning rate constant
         self.iter_decay = 850 #when we start decaying the learning rate
@@ -332,31 +332,30 @@ class Args():
         self.loss = "wloss" #ls, bce, wloss
         self.paired_dataset = True
         self.dataset_name = "tactile" # "tactile", "aligned" or "sketchy"
-        self.flip = True #image augementation flip horizontally
+        self.flip = True #image augementation flip horizontally 
         self.jitter = True #image augementation vary color, brightness and contrast
         self.erase = True #image augementation randomly erase a portion of input image
-        self.folder_name = "wgan_tactile_unet_patch" #where we want to save the model to
-    
-    
+        self.folder_name = "wgan_tactile_unet" #where we want to save the model to
+
 opt = Args()
 
 photo_path_train = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"train", "photo")
 sketch_path_train = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"train", "sketch")
-train_set = get_dataset(photo_path_train,sketch_path_train, opt,flip=True,jitter=True,erase= False, colored_s=False)
+train_set = get_dataset(photo_path_train,sketch_path_train, opt,flip=True,jitter=True,erase= False, colored_s=True)
 
 photo_path_test = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"test", "photo")
 sketch_path_test = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"test", "sketch")
-testing_set =  get_dataset(photo_path_test,sketch_path_test, opt,flip=False,jitter=False,erase= False, colored_s=False)
+testing_set =  get_dataset(photo_path_test,sketch_path_test, opt,flip=False,jitter=False,erase= False,colored_s=True)
 
 
-# In[7]:
+# In[ ]:
 
 
 exps = [opt]
 for option in exps:
     experiment = Train_Pix2Pix(option,train_set,testing_set)
     experiment.train(option)
-    folderpath = os.path.join(str(sys.argv[1]),"models",option.folder_name)
+    folderpath = os.path.join(os.getcwd(),"models",option.folder_name)
     model_path = os.path.join(folderpath,option.gen)
     experiment.save_model(folderpath,model_path)
     experiment.save_arrays(folderpath)
