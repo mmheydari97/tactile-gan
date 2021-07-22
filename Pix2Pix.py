@@ -307,14 +307,14 @@ class Args():
     We set model details as a class that we can pass around
     '''
     def __init__(self):
-        self.batch_size = 16 
+        self.batch_size = 16
         self.test_batch_size = 16
         self.input_dim = 3
-        self.output_dim = 1
+        self.output_dim = 3
         self.gen_filters =64 #starting filters for the generator
         self.disc_filters =64 #starting filters for the discriminator
-        self.epoch_count =0 #starting epoch, useful if we're loading in a half trained model, we can change starting epoch
-        self.total_iters=1000 #total epochs we're training for
+        self.epoch_count = 0 #starting epoch, useful if we're loading in a half trained model, we can change starting epoch
+        self.total_iters = 1000 #total epochs we're training for
         self.iter_constant = 200 #how many epochs we keep the learning rate constant
         self.iter_decay = 850 #when we start decaying the learning rate
         self.lr = 0.0002
@@ -327,7 +327,7 @@ class Args():
         self.use_ls = True
         self.resblocks = 9 #number of resblocks in bottleneck if we're using resnet generator
         self.norm = "instance"
-        self.gen = "UNet" # Resnet, UNet++, UNet, UNet-no-skips
+        self.gen = "UNet++" # Resnet, UNet++, UNet, UNet-no-skips
         self.disc= "Patch" #Global, Patch
         self.loss = "wloss" #ls, bce, wloss
         self.paired_dataset = True
