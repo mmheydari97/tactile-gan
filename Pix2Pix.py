@@ -52,12 +52,14 @@ from Tensorboard_Logger import Logger
 # In[5]:
 
 
-def get_scheduler(optimizer ):
+def get_scheduler(optimizer):
     '''
     Learning rate scheduler. We want to start off at a constant rate and slowly decay
     '''
     def lambda_rule(epoch):
         lr_l = 1.0 - max(0, epoch + 1 + opt.epoch_count - opt.iter_constant) / float(opt.iter_decay + 1)
+        if lr_l < 0.001:
+            lr_l = 0.001
         return lr_l
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
     return scheduler
@@ -311,10 +313,10 @@ class Args():
         self.output_dim = 3
         self.gen_filters =64 #starting filters for the generator
         self.disc_filters =64 #starting filters for the discriminator
-        self.epoch_count =1 #starting epoch, useful if we're loading in a half trained model, we can change starting epoch
-        self.total_iters=3 #total epochs we're training for
+        self.epoch_count =0 #starting epoch, useful if we're loading in a half trained model, we can change starting epoch
+        self.total_iters=1000 #total epochs we're training for
         self.iter_constant = 200 #how many epochs we keep the learning rate constant
-        self.iter_decay = 200 #when we start decaying the learning rate
+        self.iter_decay = 850 #when we start decaying the learning rate
         self.lr = 0.0002
         self.label_smoothing = True #if True, we use one sided label smoothing
         self.beta1 = 0.5 # beta1 for our Adam optimizer
