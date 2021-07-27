@@ -355,7 +355,7 @@ exps = [opt]
 for option in exps:
     experiment = Train_Pix2Pix(option,train_set,testing_set)
     experiment.train(option)
-    folderpath = os.path.join(os.getcwd(),"models",option.folder_name)
+    folderpath = os.path.join(str(sys.argv[1]),"models",option.folder_name)
     model_path = os.path.join(folderpath,option.gen)
     experiment.save_model(folderpath,model_path)
     experiment.save_arrays(folderpath)
