@@ -97,6 +97,15 @@ class Train_Pix2Pix:
         self.netD = create_disc(opt.disc,opt.input_dim+opt.output_dim,use_sigmoid)
         self.netD.to(self.device)
         init_weights(self.netD)
+
+        if opt.pretrained_gen or opt.pretrained_disc:
+            checkpoint = torch.load(os.path.join(os.getcwd(),"models",folder_name,model_name))
+
+        if opt.pretrained_gen:
+            self.NetG.load_state_dict(checkpoint["gen"])
+        if opt.pretrained_disc:
+            self.NetD.load_state_dict(checkpoint["disc"])
+
         #set the GAN adversarial loss
         if opt.loss =="bce":
             self.criterion = nn.BCELoss().to(self.device) 
@@ -329,8 +338,9 @@ parser.add_argument("--no_flip", default=False, action='store_true', help="if wr
 parser.add_argument("--no_jitter", default=False, action='store_true', help="if written, we will augment the dataset by varying color, brightness and contrast")
 parser.add_argument("--no_erase", default=False, action='store_true', help="if written, we will augment the dataset by randomly erasing a portion of input image")
 parser.add_argument("--folder_name", default="wgan_tactile_unet", help="where we want to save the model to")
-
-args = parser.parse_args()
+parser.add_argument()
+args = parser.parse_args("--pretrained_gen", default=False, action='store_true', help="if written, we will load the weights for the generator brfore training")
+args = parser.parse_args("--pretrained_disc", default=False, action='store_true', help="if written, we will load the weights for the discriminator brfore training")
 
 
 
@@ -370,6 +380,8 @@ class Args():
         self.jitter = not args.no_jitter
         self.erase = not args.no_erase
         self.folder_name = args.folder_name 
+        self.pretrained_gen = args.pretrained_gen
+        self.pretrained_disc = args.pretrained_disc
 
 opt = Args()
 
