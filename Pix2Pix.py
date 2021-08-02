@@ -338,10 +338,10 @@ parser.add_argument("--no_flip", default=False, action='store_true', help="if wr
 parser.add_argument("--no_jitter", default=False, action='store_true', help="if written, we will augment the dataset by varying color, brightness and contrast")
 parser.add_argument("--no_erase", default=False, action='store_true', help="if written, we will augment the dataset by randomly erasing a portion of input image")
 parser.add_argument("--folder_name", default="wgan_tactile_unet", help="where we want to save the model to")
-parser.add_argument()
-args = parser.parse_args("--pretrained_gen", default=False, action='store_true', help="if written, we will load the weights for the generator brfore training")
-args = parser.parse_args("--pretrained_disc", default=False, action='store_true', help="if written, we will load the weights for the discriminator brfore training")
+parser.add_argument("--pretrained_gen", default=False, action='store_true', help="if written, we will load the weights for the generator brfore training")
+parser.add_argument("--pretrained_disc", default=False, action='store_true', help="if written, we will load the weights for the discriminator brfore training")
 
+args = parser.parse_args()
 
 
 
