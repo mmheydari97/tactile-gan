@@ -49,6 +49,8 @@ from util import ImagePool, set_requires_grad,tensor_to_plt,init_weights, mkdir
 from Tensorboard_Logger import Logger
 
 
+
+
 # In[ ]:
 
 
@@ -298,6 +300,40 @@ class Train_Pix2Pix:
         return loss_G_L1
         
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--dir", help="data directory")
+parser.add_argument("--batch_size", type=int, default=16, help="training batch size")
+parser.add_argument("--test_batch_size", type=int, default=16, help="test batch size")
+parser.add_argument("--input_dim", type=int, default=3, help="input depth size")
+parser.add_argument("--output_dim", type=int, default=3, help="output depth size")
+parser.add_argument("--gen_filters", type=int, default=64, help="starting filters for the generator")
+parser.add_argument("--disc_filters", type=int, default=64, help="starting filters for the discriminator")
+parser.add_argument("--epoch_count", type=int, default=1, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
+parser.add_argument("--total_iters", type=int, help="total epochs we're training for")
+parser.add_argument("--iter_constant", type=int, default=200, help="how many epochs we keep the learning rate constant")
+parser.add_argument("--iter_decay", type=int, default=850, help="when we start decaying the learning rate")
+parser.add_argument("--lr", type=float, default=0.0002, help="learning rate")
+parser.add_argument("--no_label_smoothing", default=False, action='store_ture', help="if written, we will not use one sided label smoothing")
+parser.add_argument("--beta1", type=float, default=0.5, help="beta1 for our Adam optimizer")
+parser.add_argument("--no_cuda", default=False, action='store_true', help="if written, we will not use gpu accelerated training")
+parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
+parser.add_argument("--lambda_A", type=float, default=0, help="L1 lambda")
+parser.add_argument("--lambda_GP", type=float, default=10, help="Gradient_penalty loss")
+parser.add_argument("--norm", default="instance", help="normalization mode")
+parser.add_argument("--gen", default="UNet++", choices=["Resnet", "UNet++", "UNet", "UNet-no-skips"] help="generator architecture")
+parser.add_argument("--disc", default="Patch", choices=["Global", "Patch"] help="discriminator architecture")
+parser.add_argument("--loss", default="wloss", choices=["ls", "bce", "wloss"] help="loss function")
+parser.add_argument("--no_paired_dataset", default=False, action='store_true', help="whether the dataset is paired")
+parser.add_argument("--dataset_name", default="tactile", choices=["tactile", "aligned", "sketchy"] help="name of the dataset")
+parser.add_argument("--no_flip", default=False, action='store_true', help="if written, we will augment the dataset by flipping images")
+parser.add_argument("--no_jitter", default=False, action='store_true', help="if written, we will augment the dataset by varying color, brightness and contrast")
+parser.add_argument("--no_erase", default=False, action='store_true', help="if written, we will augment the dataset by randomly erasing a portion of input image")
+parser.add_argument("--folder_name", default="wgan_tactile_unet", help="where we want to save the model to")
+
+args = parser.parse_args()
+
+
+
 
 # In[ ]:
 
@@ -307,45 +343,44 @@ class Args():
     We set model details as a class that we can pass around
     '''
     def __init__(self):
-        self.batch_size = 16
-        self.test_batch_size = 16
-        self.input_dim = 3
-        self.output_dim = 3
-        self.gen_filters = 64 #starting filters for the generator
-        self.disc_filters = 64 #starting filters for the discriminator
-        self.epoch_count = 1 #starting epoch, useful if we're loading in a half trained model, we can change starting epoch
-        self.total_iters = 1000 #total epochs we're training for
-        self.iter_constant = 200 #how many epochs we keep the learning rate constant
-        self.iter_decay = 850 #when we start decaying the learning rate
-        self.lr = 0.0002
-        self.label_smoothing = True #if True, we use one sided label smoothing
-        self.beta1 = 0.5 # beta1 for our Adam optimizer
-        self.cuda = True
-        self.threads = 8
-        self.lambda_A = 0 #L1 lambda
-        self.lambda_GP = 10 #Gradient_penalty loss
-        self.use_ls = True
-        self.resblocks = 9 #number of resblocks in bottleneck if we're using resnet generator
-        self.norm = "instance"
-        self.gen = "UNet++" # Resnet, UNet++, UNet, UNet-no-skips
-        self.disc= "Patch" #Global, Patch
-        self.loss = "wloss" #ls, bce, wloss
-        self.paired_dataset = True
-        self.dataset_name = "tactile" # "tactile", "aligned" or "sketchy"
-        self.flip = True #image augementation flip horizontally 
-        self.jitter = True #image augementation vary color, brightness and contrast
-        self.erase = True #image augementation randomly erase a portion of input image
-        self.folder_name = "wgan_tactile_unet" #where we want to save the model to
+        self.batch_size = args.batch_size
+        self.test_batch_size = args.test_batch_size
+        self.input_dim = args.input_dim
+        self.output_dim = args.output_dim
+        self.gen_filters = args.gen_filters
+        self.disc_filters = args.disc_filters
+        self.epoch_count = args.epoch_count
+        self.total_iters = args.total_iters
+        self.iter_constant = args.iter_constant
+        self.iter_decay = args.iter_decay
+        self.lr = args.lr
+        self.label_smoothing = not args.no_label_smoothing
+        self.beta1 = args.beta1
+        self.cuda = not args.no_cuda
+        self.threads = args.threads
+        self.lambda_A = args.lambda_A
+        self.lambda_GP = args.lambda_GP
+        self.norm = args.norm
+        self.gen = args.gen
+        self.disc= args.disc
+        self.loss = args.loss
+        self.paired_dataset = not args.no_paired_dataset
+        self.dataset_name = args.dataset_name
+        self.flip = not args.no_flip
+        self.jitter = not args.no_jitter
+        self.erase = not args.no_erase
+        self.folder_name = args.folder_name 
 
 opt = Args()
 
-photo_path_train = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"train", "photo")
-sketch_path_train = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"train", "sketch")
-train_set = get_dataset(photo_path_train,sketch_path_train, opt,flip=True,jitter=True,erase= False, colored_s=True)
+colored = opt.output_dim == 3
+photo_path_train = os.path.join(args.dir,"data",opt.dataset_name,"train", "photo")
+sketch_path_train = os.path.join(args.dir,"data",opt.dataset_name,"train", "sketch")
+train_set = get_dataset(photo_path_train,sketch_path_train, opt,flip=True,jitter=True,erase= False, colored_s=colored)
 
-photo_path_test = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"test", "photo")
-sketch_path_test = os.path.join(str(sys.argv[1]),"data",opt.dataset_name,"test", "sketch")
-testing_set =  get_dataset(photo_path_test,sketch_path_test, opt,flip=False,jitter=False,erase= False,colored_s=True)
+photo_path_test = os.path.join(args.dir,"data",opt.dataset_name,"test", "photo")
+sketch_path_test = os.path.join(args.dir,"data",opt.dataset_name,"test", "sketch")
+testing_set =  get_dataset(photo_path_test,sketch_path_test, opt,flip=False,jitter=False,erase= False,colored_s=colored)
 
 
 # In[ ]:
@@ -355,7 +390,7 @@ exps = [opt]
 for option in exps:
     experiment = Train_Pix2Pix(option,train_set,testing_set)
     experiment.train(option)
-    folderpath = os.path.join(str(sys.argv[1]),"models",option.folder_name)
+    folderpath = os.path.join(args.dir,"models",option.folder_name)
     model_path = os.path.join(folderpath,option.gen)
     experiment.save_model(folderpath,model_path)
     experiment.save_arrays(folderpath)
