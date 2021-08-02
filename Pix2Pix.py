@@ -99,7 +99,7 @@ class Train_Pix2Pix:
         init_weights(self.netD)
 
         if opt.pretrained_gen or opt.pretrained_disc:
-            checkpoint = torch.load(os.path.join(os.getcwd(),"models",folder_name,model_name))
+            checkpoint = torch.load(os.path.join(opt.dir,"models",folder_name,model_name))
 
         if opt.pretrained_gen:
             self.NetG.load_state_dict(checkpoint["gen"])
