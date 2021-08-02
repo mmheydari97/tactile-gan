@@ -353,6 +353,7 @@ class Args():
     We set model details as a class that we can pass around
     '''
     def __init__(self):
+        self.dir = args.dir
         self.batch_size = args.batch_size
         self.test_batch_size = args.test_batch_size
         self.input_dim = args.input_dim
