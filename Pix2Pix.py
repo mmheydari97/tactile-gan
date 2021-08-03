@@ -99,12 +99,12 @@ class Train_Pix2Pix:
         init_weights(self.netD)
 
         if opt.pretrained_gen or opt.pretrained_disc:
-            checkpoint = torch.load(os.path.join(opt.dir,"models",folder_name,model_name))
+            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_name,opt.gen))
 
         if opt.pretrained_gen:
-            self.NetG.load_state_dict(checkpoint["gen"])
+            self.netG.load_state_dict(checkpoint["gen"])
         if opt.pretrained_disc:
-            self.NetD.load_state_dict(checkpoint["disc"])
+            self.netD.load_state_dict(checkpoint["disc"])
 
         #set the GAN adversarial loss
         if opt.loss =="bce":
