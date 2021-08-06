@@ -97,14 +97,7 @@ class Train_Pix2Pix:
         self.netD = create_disc(opt.disc,opt.input_dim+opt.output_dim,use_sigmoid)
         self.netD.to(self.device)
         init_weights(self.netD)
-
-        if opt.pretrained_gen or opt.pretrained_disc:
-            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_name,opt.gen))
-
-        if opt.pretrained_gen:
-            self.netG.load_state_dict(checkpoint["gen"])
-        if opt.pretrained_disc:
-            self.netD.load_state_dict(checkpoint["disc"])
+        
 
         #set the GAN adversarial loss
         if opt.loss =="bce":
@@ -132,6 +125,15 @@ class Train_Pix2Pix:
         self.disc_loss = []
         self.l1_loss = []
 
+        if opt.continue_training:
+            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_name,opt.gen))
+
+            self.netG.load_state_dict(checkpoint["gen"])
+            self.optimizer_G.load_state_dict(checkpoint["optimizerG_state_dict"])
+            self.netD.load_state_dict(checkpoint["disc"])
+            self.optimizer_D.load_state_dict(checkpoint["optimizerD_state_dict"])
+        
+    
     def train(self,opt):
         '''
         Starts the training process. The details and parts of the model were already initialized in __init__
@@ -338,8 +340,7 @@ parser.add_argument("--no_flip", default=False, action='store_true', help="if wr
 parser.add_argument("--no_jitter", default=False, action='store_true', help="if written, we will augment the dataset by varying color, brightness and contrast")
 parser.add_argument("--no_erase", default=False, action='store_true', help="if written, we will augment the dataset by randomly erasing a portion of input image")
 parser.add_argument("--folder_name", default="wgan_tactile_unet", help="where we want to save the model to")
-parser.add_argument("--pretrained_gen", default=False, action='store_true', help="if written, we will load the weights for the generator brfore training")
-parser.add_argument("--pretrained_disc", default=False, action='store_true', help="if written, we will load the weights for the discriminator brfore training")
+parser.add_argument("--continue_training", default=False, action='store_true', help="if written, we will load the weights for the network brfore training")
 
 args = parser.parse_args()
 
@@ -381,8 +382,7 @@ class Args():
         self.jitter = not args.no_jitter
         self.erase = not args.no_erase
         self.folder_name = args.folder_name 
-        self.pretrained_gen = args.pretrained_gen
-        self.pretrained_disc = args.pretrained_disc
+        self.continue_training = args.continue_training
 
 opt = Args()
 
