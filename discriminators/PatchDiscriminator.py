@@ -5,8 +5,8 @@ class PatchDiscriminator(nn.Module):
     def __init__(self, input_nc, use_sigmoid, ndf=64 ):
         super(PatchDiscriminator, self).__init__()
     
-        kw = 4
-        padw = 1
+        kw = 3
+        padw = 0
         layers = [
             nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw),
             nn.LeakyReLU(0.2, True),
@@ -15,7 +15,7 @@ class PatchDiscriminator(nn.Module):
             nn.InstanceNorm2d(ndf * 2, affine=True, track_running_stats=False),
             nn.LeakyReLU(0.2, True),
             
-            nn.Conv2d(ndf *2, ndf * 4,kernel_size=kw, stride=2, padding=padw, bias=False),
+            nn.Conv2d(ndf *2, ndf * 4,kernel_size=kw, stride=1, padding=padw, bias=False),
             nn.InstanceNorm2d(ndf * 4, affine=True, track_running_stats=False),
             nn.LeakyReLU(0.2, True),
             

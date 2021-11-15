@@ -190,7 +190,7 @@ class Train_Pix2Pix:
                 loss_D_real = torch.mean(loss_D_real_set)
                 
                 if not(opt.loss == "wloss"): 
-                    loss_D = (loss_D_fake + loss_D_real) * 0.5 * opt.lambda_G
+                    loss_D = (loss_D_fake + loss_D_real) * 0.5 * opt.lambda_GP
                 else:
                     loss_D = loss_D_real
                 

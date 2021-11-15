@@ -77,16 +77,17 @@ def save_images(dataset,path):
         real_A, real_B = batch[0], batch[1]
         with torch.no_grad():
             out = Gen(real_A.to(device))[0].cpu()
-            
-        if not colored:
-            out = onechannel_to_three(out)
+
 
         a = real_A[0]
         a = unnormalize(a)
 
-        b = real_B[0][0].unsqueeze(0)
+        b = real_B[0]
         b = unnormalize(b)
-        b = onechannel_to_three(b)
+
+        if not colored:
+            out = onechannel_to_three(out)
+            b = onechannel_to_three(b)
         
         file_name = str(i) +".jpg"
         save_image(concat_images(a,b,out),os.path.join(path,file_name))
