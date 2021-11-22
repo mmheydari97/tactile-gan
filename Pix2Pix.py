@@ -45,7 +45,7 @@ import time
 from generators.generators import create_gen
 from discriminators.discriminators import create_disc
 from datasets.datasets import get_dataset
-from util import ImagePool, set_requires_grad,tensor_to_plt,init_weights, mkdir
+from util import ImagePool, set_requires_grad,tensor_to_plt,init_weights, mkdir, VGGPerceptualLoss
 from Tensorboard_Logger import Logger
 
 
@@ -97,7 +97,7 @@ class Train_Pix2Pix:
         self.netD = create_disc(opt.disc,opt.input_dim+opt.output_dim,use_sigmoid)
         self.netD.to(self.device)
         init_weights(self.netD)
-        
+
 
         #set the GAN adversarial loss
         if opt.loss =="bce":
@@ -138,6 +138,12 @@ class Train_Pix2Pix:
         '''
         Starts the training process. The details and parts of the model were already initialized in __init__
         '''
+
+        # load vgg if we want to use perceptual loss
+        if opt.lambda_per != 0:
+            perceptual = VGGPerceptualLoss(resize=True)
+
+
         for epoch in range(opt.epoch_count, opt.total_iters + 1):
 
             #monitor each minibatch loss
@@ -154,7 +160,7 @@ class Train_Pix2Pix:
 
                 # (generate fake images)
                 fake_B = self.netG(real_A)
-
+                
                 #Optimize D ################################
                 set_requires_grad(nets=self.netD, requires_grad=True) #optimize for D so create computation graph
                 self.optimizer_D.zero_grad()
@@ -216,7 +222,8 @@ class Train_Pix2Pix:
                     loss_G = loss_G_GAN + loss_G_L1 * opt.lambda_A
                 else:
                     loss_G = pred_fake.mean()*-1 #the Generator Loss in WGAn is different
-                    
+                if opt.lambda_per != 0:
+                    loss_G = loss_G + opt.lambda_per * perceptual.forward(fake_B, real_A, [0,1,2])
                 lossglist.append(loss_G.item())
                 loss_G.backward()
                 self.optimizer_G.step()
@@ -341,6 +348,7 @@ parser.add_argument("--no_jitter", default=False, action='store_true', help="if 
 parser.add_argument("--no_erase", default=False, action='store_true', help="if written, we will augment the dataset by randomly erasing a portion of input image")
 parser.add_argument("--folder_name", default="wgan_tactile_unet", help="where we want to save the model to")
 parser.add_argument("--continue_training", default=False, action='store_true', help="if written, we will load the weights for the network brfore training")
+parser.add_argument("--lambda_per", type=float, default=0, help="perceptual lambda")
 
 args = parser.parse_args()
 
@@ -372,6 +380,7 @@ class Args():
         self.threads = args.threads
         self.lambda_A = args.lambda_A
         self.lambda_GP = args.lambda_GP
+        self.lambda_per = args.lambda_per
         self.norm = args.norm
         self.gen = args.gen
         self.disc= args.disc
