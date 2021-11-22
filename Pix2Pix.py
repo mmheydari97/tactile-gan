@@ -143,7 +143,6 @@ class Train_Pix2Pix:
         if opt.lambda_per != 0:
             perceptual = VGGPerceptualLoss(resize=True)
 
-
         for epoch in range(opt.epoch_count, opt.total_iters + 1):
 
             #monitor each minibatch loss
@@ -223,7 +222,11 @@ class Train_Pix2Pix:
                 else:
                     loss_G = pred_fake.mean()*-1 #the Generator Loss in WGAn is different
                 if opt.lambda_per != 0:
-                    loss_G = loss_G + opt.lambda_per * perceptual.forward(fake_B, real_A, [0,1,2])
+                    # loss_G = loss_G + 
+                    # opt.lambda_per * perceptual.forward(fake_B, real_A, [0,1,2])
+                    print(f"image is cuda? {fake_B.is_cuda}")
+                    print(f"model is cuda? {perceptual.forward(fake_B, real_A, [0,1,2]).is_cuda}")
+                    print(f"loss is cuda? {loss_G.is_cuda}")
                 lossglist.append(loss_G.item())
                 loss_G.backward()
                 self.optimizer_G.step()
