@@ -222,7 +222,7 @@ class Train_Pix2Pix:
                 else:
                     loss_G = pred_fake.mean()*-1 #the Generator Loss in WGAn is different
                 if opt.lambda_per != 0:
-                    loss_G = loss_G + opt.lambda_per * perceptual.forward(fake_B, real_A, [0,1,2])
+                    loss_G = loss_G + opt.lambda_per * perceptual.forward(fake_B, real_A, [0,1])
                 lossglist.append(loss_G.item())
                 loss_G.backward()
                 self.optimizer_G.step()
