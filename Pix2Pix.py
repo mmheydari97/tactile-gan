@@ -60,8 +60,8 @@ def get_scheduler(optimizer):
     '''
     def lambda_rule(epoch):
         lr_l = 1.0 - max(0, epoch + 1 + opt.epoch_count - opt.iter_constant) / float(opt.iter_decay + 1)
-        if lr_l < 0.001:
-            lr_l = 0.001
+        if lr_l < 0.0001:
+            lr_l = 0.0001
         return lr_l
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
     return scheduler
