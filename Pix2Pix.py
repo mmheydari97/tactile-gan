@@ -124,6 +124,7 @@ class Train_Pix2Pix:
         self.gen_loss = []
         self.disc_loss = []
         self.l1_loss = []
+        self.per_loss = []
 
         if opt.continue_training:
             checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_name,opt.gen))
@@ -149,6 +150,7 @@ class Train_Pix2Pix:
             lossdlist = []
             lossglist = []
             lossl1list = []
+            lossperlist = []
             
             t1 = time.time()
             
@@ -222,8 +224,15 @@ class Train_Pix2Pix:
                 else:
                     loss_G = pred_fake.mean()*-1 #the Generator Loss in WGAn is different
                 if opt.lambda_per != 0:
-                    loss_G = loss_G + opt.lambda_per * perceptual.forward(fake_B, real_A, [0,1])
-                lossglist.append(loss_G.item())
+                    per_loss = perceptual.forward(fake_B, real_A, [0,1])
+                    loss_G += per_loss * opt.lambda_per
+                    lossperlist.append(per_loss.item())
+                
+                ###########################
+                # lossglist.append(loss_G.item())
+                ###########################
+                
+                lossglist.append(loss_G_GAN.item())
                 loss_G.backward()
                 self.optimizer_G.step()
 
@@ -234,13 +243,14 @@ class Train_Pix2Pix:
             print('learning rate = %.7f' % lr)
             t2 = time.time()
             diff = t2-t1
-            print("iteration:",epoch,"loss D:", mean(lossdlist),"loss G:", mean(lossglist))
+            print("iteration:",epoch,"loss D:", mean(lossdlist),"loss G:", mean(lossglist), "loss L1:", mean(lossl1list), "loss per:", mean(lossperlist))
             print("Took ", diff, "seconds")
             print("Estimated time left:", diff*(opt.total_iters - epoch))
 
             self.gen_loss.append(mean(lossglist))
             self.disc_loss.append(mean(lossdlist))
             self.l1_loss.append(mean(lossl1list))
+            self.per_loss.append(mean(lossperlist))
 
 
             if epoch % 1 == 0:                
@@ -334,7 +344,7 @@ parser.add_argument("--no_label_smoothing", default=False, action='store_true', 
 parser.add_argument("--beta1", type=float, default=0.5, help="beta1 for our Adam optimizer")
 parser.add_argument("--no_cuda", default=False, action='store_true', help="if written, we will not use gpu accelerated training")
 parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
-parser.add_argument("--lambda_A", type=float, default=0, help="L1 lambda")
+parser.add_argument("--lambda_A", type=float, default=0.1, help="L1 lambda")
 parser.add_argument("--lambda_GP", type=float, default=10, help="Gradient_penalty loss")
 parser.add_argument("--norm", default="instance", help="normalization mode")
 parser.add_argument("--gen", default="UNet++", choices=["Resnet", "UNet++", "UNet", "UNet-no-skips"], help="generator architecture")
@@ -347,7 +357,7 @@ parser.add_argument("--no_jitter", default=False, action='store_true', help="if 
 parser.add_argument("--no_erase", default=False, action='store_true', help="if written, we will augment the dataset by randomly erasing a portion of input image")
 parser.add_argument("--folder_name", default="wgan_tactile_unet", help="where we want to save the model to")
 parser.add_argument("--continue_training", default=False, action='store_true', help="if written, we will load the weights for the network brfore training")
-parser.add_argument("--lambda_per", type=float, default=0, help="perceptual lambda")
+parser.add_argument("--lambda_per", type=float, default=0.1, help="perceptual lambda")
 
 args = parser.parse_args()
 
