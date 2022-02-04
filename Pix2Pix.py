@@ -227,6 +227,8 @@ class Train_Pix2Pix:
                     per_loss = perceptual.forward(fake_B, real_A, [0,1])
                     loss_G += per_loss * opt.lambda_per
                     lossperlist.append(per_loss.item())
+                else:
+                    lossperlist.append(0)
                 
                 ###########################
                 # lossglist.append(loss_G.item())
