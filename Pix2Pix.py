@@ -347,7 +347,7 @@ parser.add_argument("--threads", type=int, default=8, help="cpu threads for load
 parser.add_argument("--lambda_A", type=float, default=0.1, help="L1 lambda")
 parser.add_argument("--lambda_GP", type=float, default=10, help="Gradient_penalty loss")
 parser.add_argument("--norm", default="instance", help="normalization mode")
-parser.add_argument("--gen", default="UNet++", choices=["Resnet", "UNet++", "UNet", "UNet-no-skips"], help="generator architecture")
+parser.add_argument("--gen", default="UNet++", choices=["Resnet", "UNet++", "UNet", "UNet-no-skips", "BCDUNet"], help="generator architecture")
 parser.add_argument("--disc", default="Patch", choices=["Global", "Patch"], help="discriminator architecture")
 parser.add_argument("--loss", default="wloss", choices=["ls", "bce", "wloss"], help="loss function")
 parser.add_argument("--no_paired_dataset", default=False, action='store_true', help="whether the dataset is paired")
