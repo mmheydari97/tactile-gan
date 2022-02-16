@@ -217,9 +217,9 @@ class BCDUNet(nn.Module):
             self.clstm2 = ConvBLSTM(in_channels=num_filter*2, hidden_channels=num_filter//2, kernel_size=(3, 3), num_layers=1).cuda()
             self.clstm3 = ConvBLSTM(in_channels=num_filter, hidden_channels=num_filter//4, kernel_size=(3, 3), num_layers=1).cuda()
         else:
-            self.clstm1 = ConvLSTM(in_channels=num_filter*4, hidden_channels=num_filter*2, kernel_size=(3, 3), num_layers=1).cuda()
-            self.clstm2 = ConvLSTM(in_channels=num_filter*2, hidden_channels=num_filter, kernel_size=(3, 3), num_layers=1).cuda()
-            self.clstm3 = ConvLSTM(in_channels=num_filter, hidden_channels=num_filter//2, kernel_size=(3, 3), num_layers=1).cuda()
+            self.clstm1 = ConvLSTM(in_channels=num_filter*4, hidden_channels=num_filter, kernel_size=(3, 3), num_layers=1).cuda()
+            self.clstm2 = ConvLSTM(in_channels=num_filter*2, hidden_channels=num_filter//2, kernel_size=(3, 3), num_layers=1).cuda()
+            self.clstm3 = ConvLSTM(in_channels=num_filter, hidden_channels=num_filter//4, kernel_size=(3, 3), num_layers=1).cuda()
 
             
     def forward(self, x):
