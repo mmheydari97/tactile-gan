@@ -8,11 +8,11 @@ Original file is located at
 """
 
 # Commented out IPython magic to ensure Python compatibility.
-from google.colab import drive
+#from google.colab import drive
 import os
 
-if os.getcwd() != '/content/drive/My Drive/Pix2Pix':
-    drive.mount('/content/drive')
+#if os.getcwd() != '/content/drive/My Drive/Pix2Pix':
+#    drive.mount('/content/drive')
 #     %cd drive/MyDrive/Pix2Pix/
 # %ls
 
@@ -102,9 +102,10 @@ def save_images(dataset,path, colored=False):
             b = onechannel_to_three(b)
         
         file_name = str(i) +".jpg"
-        save_image(concat_images(a,b,out),os.path.join(path,file_name))
+        # save_name(concat_images(a,b,out), os.path.join(path,file_name))
+        save_image(a,os.path.join(path,file_name))
 
-folder= "wgan_tactile_unet_0.5"
+folder= "wgan_tactile_unet"
 opt = load_opt(folder)
 device = torch.device("cuda:0")
 Gen = load_model(folder,opt.gen,opt,device)
