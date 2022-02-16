@@ -117,7 +117,7 @@ class ConvLSTM(nn.Module):
             layer_output_list = layer_output_list[-1:]
             last_state_list = last_state_list[-1:]
 
-        return layer_output_list, last_state_list
+        return layer_output_list  # , last_state_list
 
     def _init_hidden(self, b, h, w):
         init_states = []
@@ -154,9 +154,9 @@ class ConvBLSTM(nn.Module):
         x = B T C H W tensors.
         """
         
-        y_out_fwd, _ = self.forward_net(x)
+        y_out_fwd = self.forward_net(x)
         reversed_idx = list(reversed(range(x.shape[1])))
-        y_out_rev, _ = self.reverse_net(x[:, reversed_idx, ...])
+        y_out_rev = self.reverse_net(x[:, reversed_idx, ...])
         
         y_out_fwd = y_out_fwd[-1] # outputs of last CLSTM layer = B, T, C, H, W
         y_out_rev = y_out_rev[-1] # outputs of last CLSTM layer = B, T, C, H, W
@@ -173,7 +173,7 @@ class ConvBLSTM(nn.Module):
 
 
 class BCDUNet(nn.Module):
-    def __init__(self, input_dim=3, output_dim=3, num_filter=64, norm='instance'):
+    def __init__(self, input_dim=3, output_dim=3, num_filter=64, norm='instance', bidirectional=False):
         super(BCDUNet, self).__init__()
         self.num_filter = num_filter
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2).cuda()
@@ -211,12 +211,17 @@ class BCDUNet(nn.Module):
         self.convt3 = nn.ConvTranspose2d(num_filter*2, num_filter, kernel_size=2, stride=2, padding=0).cuda()
         self.bn3 = nn.BatchNorm2d(num_filter).cuda()
 
+        if bidirectional:
 
-        self.clstm1 = ConvBLSTM(in_channels=num_filter*4, hidden_channels=num_filter, kernel_size=(3, 3), num_layers=1).cuda()
-        self.clstm2 = ConvBLSTM(in_channels=num_filter*2, hidden_channels=num_filter//2, kernel_size=(3, 3), num_layers=1).cuda()
-        self.clstm3 = ConvBLSTM(in_channels=num_filter, hidden_channels=num_filter//4, kernel_size=(3, 3), num_layers=1).cuda()
-        
-        
+            self.clstm1 = ConvBLSTM(in_channels=num_filter*4, hidden_channels=num_filter, kernel_size=(3, 3), num_layers=1).cuda()
+            self.clstm2 = ConvBLSTM(in_channels=num_filter*2, hidden_channels=num_filter//2, kernel_size=(3, 3), num_layers=1).cuda()
+            self.clstm3 = ConvBLSTM(in_channels=num_filter, hidden_channels=num_filter//4, kernel_size=(3, 3), num_layers=1).cuda()
+        else:
+            self.clstm1 = ConvLSTM(in_channels=num_filter*4, hidden_channels=num_filter*2, kernel_size=(3, 3), num_layers=1).cuda()
+            self.clstm2 = ConvLSTM(in_channels=num_filter*2, hidden_channels=num_filter, kernel_size=(3, 3), num_layers=1).cuda()
+            self.clstm3 = ConvLSTM(in_channels=num_filter, hidden_channels=num_filter//2, kernel_size=(3, 3), num_layers=1).cuda()
+
+            
     def forward(self, x):
         N = x.size()[-2]
         conv1 = self.conv1_0(x)
