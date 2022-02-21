@@ -48,12 +48,12 @@ class ConvLSTMCell(nn.Module):
 
 
 class ConvLSTM(nn.Module):
-    self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     def __init__(self, in_channels, out_channels, 
     kernel_size, padding, activation, frame_size, return_sequence=False):
 
         super(ConvLSTM, self).__init__()
-
+        
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.out_channels = out_channels
         self.return_sequence = return_sequence
 
