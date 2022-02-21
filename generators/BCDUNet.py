@@ -1,184 +1,123 @@
-import torch 
+import numpy as np
+import torch
 import torch.nn as nn
 
+
 class ConvLSTMCell(nn.Module):
-    """
-    Basic CLSTM cell.
-    """
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    def __init__(self, in_channels, out_channels, 
+    kernel_size, padding, activation, frame_size):
 
-    def __init__(self, in_channels, hidden_channels, kernel_size, bias):
+        super(ConvLSTMCell, self).__init__()  
 
-        super(ConvLSTMCell, self).__init__()
-
-        self.input_dim  = in_channels
-        self.hidden_dim = hidden_channels
-
-        self.kernel_size = kernel_size
-        self.padding = kernel_size[0] // 2, kernel_size[1] // 2
-        self.bias = bias
+        if activation == "tanh":
+            self.activation = torch.tanh 
+        elif activation == "relu":
+            self.activation = torch.relu
         
-        self.conv = nn.Conv2d(in_channels=self.input_dim + self.hidden_dim,
-                              out_channels=4 * self.hidden_dim,
-                              kernel_size=self.kernel_size,
-                              padding=self.padding,
-                              bias=self.bias)
+        # Idea adapted from https://github.com/ndrplz/ConvLSTM_pytorch
+        self.conv = nn.Conv2d(
+            in_channels=in_channels + out_channels, 
+            out_channels=4 * out_channels, 
+            kernel_size=kernel_size, 
+            padding=padding)           
 
-    def forward(self, input_tensor, cur_state):
-        
-        h_cur, c_cur = cur_state
-        
-        combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
-        
-        combined_conv = self.conv(combined)
-        cc_i, cc_f, cc_o, cc_g = torch.split(combined_conv, self.hidden_dim, dim=1) 
-        i = torch.sigmoid(cc_i)
-        f = torch.sigmoid(cc_f)
-        o = torch.sigmoid(cc_o)
-        g = torch.tanh(cc_g)
+        # Initialize weights for Hadamard Products
+        self.W_ci = nn.Parameter(torch.Tensor(out_channels, *frame_size))
+        self.W_co = nn.Parameter(torch.Tensor(out_channels, *frame_size))
+        self.W_cf = nn.Parameter(torch.Tensor(out_channels, *frame_size))
 
-        c_next = f * c_cur + i * g
-        h_next = o * torch.tanh(c_next)
-        
-        return h_next, c_next
+    def forward(self, X, H_prev, C_prev):
+        # Idea adapted from https://github.com/ndrplz/ConvLSTM_pytorch
+        conv_output = self.conv(torch.cat([X, H_prev], dim=1))
+        # Idea adapted from https://github.com/ndrplz/ConvLSTM_pytorch
+        i_conv, f_conv, C_conv, o_conv = torch.chunk(conv_output, chunks=4, dim=1)
 
-    def init_hidden(self, b, h, w):
-        return (torch.zeros(b, self.hidden_dim, h, w).cuda(),
-                torch.zeros(b, self.hidden_dim, h, w).cuda())
+        input_gate = torch.sigmoid(i_conv + self.W_ci * C_prev )
+        forget_gate = torch.sigmoid(f_conv + self.W_cf * C_prev )
+
+        # Current Cell output
+        C = forget_gate*C_prev + input_gate * self.activation(C_conv)
+
+        output_gate = torch.sigmoid(o_conv + self.W_co * C )
+
+        # Current Hidden State
+        H = output_gate * self.activation(C)
+
+        return H, C
 
 
 class ConvLSTM(nn.Module):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    def __init__(self, in_channels, out_channels, 
+    kernel_size, padding, activation, frame_size, return_sequence=False):
 
-    def __init__(self, in_channels, hidden_channels, kernel_size, num_layers,
-                 batch_first=True, bias=True, return_all_layers=False):
         super(ConvLSTM, self).__init__()
 
-        self._check_kernel_size_consistency(kernel_size)
+        self.out_channels = out_channels
+        self.return_sequence = return_sequence
 
-        # Make sure that both `kernel_size` and `hidden_dim` are lists having len == num_layers
-        kernel_size = self._extend_for_multilayer(kernel_size, num_layers)
-        hidden_channels = self._extend_for_multilayer(hidden_channels, num_layers)
-        if not len(kernel_size) == len(hidden_channels) == num_layers:
-            raise ValueError('Inconsistent list length.')
+        # We will unroll this over time steps
+        self.convLSTMcell = ConvLSTMCell(in_channels, out_channels, 
+        kernel_size, padding, activation, frame_size)
 
-        self.input_dim  = in_channels
-        self.hidden_dim = hidden_channels
-        self.kernel_size = kernel_size
-        self.num_layers = num_layers
-        self.batch_first = batch_first
-        self.bias = bias
-        self.return_all_layers = return_all_layers
+    def forward(self, X):
 
-        cell_list = []
-        for i in range(0, self.num_layers):
-            cur_input_dim = self.input_dim if i == 0 else self.hidden_dim[i-1]
+        # X is a frame sequence (batch_size, seq_len, num_channels, height, width)
 
-            cell_list.append(ConvLSTMCell(in_channels=cur_input_dim,
-                                          hidden_channels=self.hidden_dim[i],
-                                          kernel_size=self.kernel_size[i],
-                                          bias=self.bias))
+        # Get the dimensions
+        batch_size, seq_len, channels, height, width = X.size()
 
-        self.cell_list = nn.ModuleList(cell_list)
+        # Initialize output
+        output = torch.zeros(batch_size, seq_len, self.out_channels,  
+        height, width, device=device)
+        
+        # Initialize Hidden State
+        H = torch.zeros(batch_size, self.out_channels, 
+        height, width, device=device)
 
-    def forward(self, input_tensor, hidden_state=None):
-        if not self.batch_first:
-            # (t, b, c, h, w) -> (b, t, c, h, w)
-            input_tensor = input_tensor.permute(1, 0, 2, 3, 4)
+        # Initialize Cell Input
+        C = torch.zeros(batch_size,self.out_channels, 
+        height, width, device=device)
 
-        # Implement stateful ConvLSTM
-        if hidden_state is not None:
-            raise NotImplementedError()
-        else:
-            b, _, _, h, w = input_tensor.shape
-            hidden_state = self._init_hidden(b, h, w)
+        # Unroll over time steps
+        for time_step in range(seq_len):
 
-        layer_output_list = []
-        last_state_list   = []
+            H, C = self.convLSTMcell(X[:,time_step,...], H, C)
 
-        seq_len = input_tensor.size(1)
-        cur_layer_input = input_tensor
+            output[:, time_step,...] = H
+        if not self.return_sequence:
+            output = torch.squeeze(output[:, -1,...], dim=1)
 
-        for layer_idx in range(self.num_layers):
-
-            h, c = hidden_state[layer_idx]
-            output_inner = []
-            for t in range(seq_len):
-
-                h, c = self.cell_list[layer_idx](input_tensor=cur_layer_input[:, t, :, :, :],
-                                                 cur_state=[h, c])
-                output_inner.append(h)
-
-            layer_output = torch.stack(output_inner, dim=1)
-            cur_layer_input = layer_output
-
-            layer_output_list.append(layer_output)
-            last_state_list.append([h, c])
-
-        if not self.return_all_layers:
-            layer_output_list = layer_output_list[-1:]
-            last_state_list = last_state_list[-1:]
-
-        return layer_output_list, last_state_list
-
-    def _init_hidden(self, b, h, w):
-        init_states = []
-        for i in range(self.num_layers):
-            init_states.append(self.cell_list[i].init_hidden(b, h, w))
-        return init_states
-
-    @staticmethod
-    def _check_kernel_size_consistency(kernel_size):
-        if not (isinstance(kernel_size, tuple) or
-                    (isinstance(kernel_size, list) and all([isinstance(elem, tuple) for elem in kernel_size]))):
-            raise ValueError('`kernel_size` must be tuple or list of tuples')
-
-    @staticmethod
-    def _extend_for_multilayer(param, num_layers):
-        if not isinstance(param, list):
-            param = [param] * num_layers
-        return param
+        return output
 
 
 class ConvBLSTM(nn.Module):
-    # Constructor
-    def __init__(self, in_channels, hidden_channels,
-                 kernel_size, num_layers, bias=True, batch_first=True):
-
+    def __init__(self, in_channels, out_channels,
+                 kernel_size, padding, activation, frame_size, return_sequence=False):
         super(ConvBLSTM, self).__init__()
-        self.forward_net = ConvLSTM(in_channels, hidden_channels//2, kernel_size,
-                                    num_layers, batch_first=batch_first, bias=bias)
-        self.reverse_net = ConvLSTM(in_channels, hidden_channels//2, kernel_size,
-                                    num_layers, batch_first=batch_first, bias=bias)
-        
+        self.return_sequence = return_sequence
+        self.forward_cell = ConvLSTM(in_channels, out_channels//2, 
+                                     kernel_size, padding, activation, frame_size, return_sequence=True)
+        self.backward_cell = ConvLSTM(in_channels, out_channels//2, 
+                                     kernel_size, padding, activation, frame_size, return_sequence=True)
     def forward(self, x):
-        """
-        x = B T C H W tensors.
-        """
-        
-        y_out_fwd, _ = self.forward_net(x)
+        y_out_forward = self.forward_cell(x)
         reversed_idx = list(reversed(range(x.shape[1])))
-        y_out_rev, _ = self.reverse_net(x[:, reversed_idx, ...])
-        
-        y_out_fwd = y_out_fwd[-1] # outputs of last CLSTM layer = B, T, C, H, W
-        y_out_rev = y_out_rev[-1] # outputs of last CLSTM layer = B, T, C, H, W
-
-        reversed_idx = list(reversed(range(y_out_rev.shape[1])))
-        y_out_rev = y_out_rev[:, reversed_idx, ...] # reverse temporal outputs.
-        b,t,c,h,w = y_out_fwd.shape
-        y_out_fwd = torch.reshape(y_out_fwd, (b, t*c, h, w))
-        y_out_rev = torch.reshape(y_out_rev, (b, t*c, h, w))
-
-        ycat = torch.cat((torch.squeeze(y_out_fwd, 1), torch.squeeze(y_out_rev, 1)), dim=1)
-        
-        return ycat
+        y_out_reverse = self.backward_cell(x[:, reversed_idx, ...])[:, reversed_idx, ...]
+        output = torch.cat((y_out_forward, y_out_reverse), dim=2)
+        if not self.return_sequence:
+            output = torch.squeeze(output[:, -1,...], dim=1)
+        return output
 
 
 class BCDUNet(nn.Module):
-    def __init__(self, input_dim=3, output_dim=3, num_filter=64, norm='instance'):
+    def __init__(self, input_dim=3, output_dim=3, num_filter=64, frame_size=(256, 256), bidirectional=False, norm='instance'):
         super(BCDUNet, self).__init__()
         self.num_filter = num_filter
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2).cuda()
         self.dropout = nn.Dropout(0.5).cuda()
-
+        self.frame_size = np.array(frame_size)
         self.conv1_0 = nn.Conv2d(input_dim, num_filter, kernel_size=3, stride=1, padding=1).cuda()
         self.conv1_1 = nn.Conv2d(num_filter, num_filter, kernel_size=3, stride=1, padding=1).cuda()
         self.conv2_0 = nn.Conv2d(num_filter, num_filter*2, kernel_size=3, stride=1, padding=1).cuda()
@@ -211,14 +150,20 @@ class BCDUNet(nn.Module):
         self.convt3 = nn.ConvTranspose2d(num_filter*2, num_filter, kernel_size=2, stride=2, padding=0).cuda()
         self.bn3 = nn.BatchNorm2d(num_filter).cuda()
 
-
-        self.clstm1 = ConvBLSTM(in_channels=num_filter*4, hidden_channels=num_filter, kernel_size=(3, 3), num_layers=1).cuda()
-        self.clstm2 = ConvBLSTM(in_channels=num_filter*2, hidden_channels=num_filter//2, kernel_size=(3, 3), num_layers=1).cuda()
-        self.clstm3 = ConvBLSTM(in_channels=num_filter, hidden_channels=num_filter//4, kernel_size=(3, 3), num_layers=1).cuda()
+        if bidirectional:
+            print("here")
+            self.clstm1 = ConvBLSTM(num_filter*4, num_filter*2, (3, 3), (1,1), 'tanh', list(self.frame_size//4)).cuda()
+            self.clstm2 = ConvBLSTM(num_filter*2, num_filter, (3, 3), (1,1), 'tanh', list(self.frame_size//2)).cuda()
+            self.clstm3 = ConvBLSTM(num_filter, num_filter//2, (3, 3), (1,1), 'tanh', list(self.frame_size)).cuda()
+        else:
+            print("there")
+            self.clstm1 = ConvLSTM(num_filter*4, num_filter*2, (3, 3), (1,1), 'tanh', list(self.frame_size//4)).cuda()
+            self.clstm2 = ConvLSTM(num_filter*2, num_filter, (3, 3), (1,1), 'tanh', list(self.frame_size//2)).cuda()
+            self.clstm3 = ConvLSTM(num_filter, num_filter//2, (3, 3), (1,1), 'tanh', list(self.frame_size)).cuda()
         
         
     def forward(self, x):
-        N = x.size()[-2]
+        N = self.frame_size
         conv1 = self.conv1_0(x)
         conv1 = self.conv1_1(conv1)
         pool1 = self.maxpool(conv1)
@@ -247,8 +192,8 @@ class BCDUNet(nn.Module):
         up6 = self.bn1(up6)
         up6 = nn.ReLU()(up6)
 
-        x1 = drop3.view(-1,1,self.num_filter*4,N//4,N//4)
-        x2 = up6.view(-1,1,self.num_filter*4,N//4,N//4)
+        x1 = drop3.view(-1,1,self.num_filter*4,*(N//4))
+        x2 = up6.view(-1,1,self.num_filter*4,*(N//4))
 
         merge6 = torch.cat((x1, x2), 1)
         merge6 = self.clstm1(merge6)
@@ -260,8 +205,8 @@ class BCDUNet(nn.Module):
         up7 = self.bn2(up7)
         up7 = nn.ReLU()(up7)
 
-        x1 = conv2.view(-1,1,self.num_filter*2,N//2,N//2)
-        x2 = up7.view(-1,1,self.num_filter*2,N//2,N//2)
+        x1 = conv2.view(-1,1,self.num_filter*2,*(N//2))
+        x2 = up7.view(-1,1,self.num_filter*2,*(N//2))
         merge7 = torch.cat((x1, x2), 1)
         merge7 = self.clstm2(merge7)
 
@@ -272,8 +217,8 @@ class BCDUNet(nn.Module):
         up8 = self.bn3(up8)
         up8 = nn.ReLU()(up8)
 
-        x1 = conv1.view(-1,1,self.num_filter,N,N)
-        x2 = up8.view(-1,1,self.num_filter,N,N)
+        x1 = conv1.view(-1,1,self.num_filter,*N)
+        x2 = up8.view(-1,1,self.num_filter,*N)
         merge8 = torch.cat((x1, x2), 1)
         merge8 = self.clstm3(merge8)
 
