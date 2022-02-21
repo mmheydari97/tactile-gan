@@ -80,8 +80,12 @@ class ConvLSTM(nn.Module):
         C = torch.zeros(batch_size,self.out_channels, 
         height, width, device=device)
 
+<<<<<<< HEAD
         # Unroll over time steps
         for time_step in range(seq_len):
+=======
+        return layer_output_list  # , last_state_list
+>>>>>>> 4f00caa46f6ef67ccfa1ff4eddc0b2538d027ba4
 
             H, C = self.convLSTMcell(X[:,time_step,...], H, C)
 
@@ -102,6 +106,7 @@ class ConvBLSTM(nn.Module):
         self.backward_cell = ConvLSTM(in_channels, out_channels//2, 
                                      kernel_size, padding, activation, frame_size, return_sequence=True)
     def forward(self, x):
+<<<<<<< HEAD
         y_out_forward = self.forward_cell(x)
         reversed_idx = list(reversed(range(x.shape[1])))
         y_out_reverse = self.backward_cell(x[:, reversed_idx, ...])[:, reversed_idx, ...]
@@ -113,6 +118,32 @@ class ConvBLSTM(nn.Module):
 
 class BCDUNet(nn.Module):
     def __init__(self, input_dim=3, output_dim=3, num_filter=64, frame_size=(256, 256), bidirectional=False, norm='instance'):
+=======
+        """
+        x = B T C H W tensors.
+        """
+        
+        y_out_fwd = self.forward_net(x)
+        reversed_idx = list(reversed(range(x.shape[1])))
+        y_out_rev = self.reverse_net(x[:, reversed_idx, ...])
+        
+        y_out_fwd = y_out_fwd[-1] # outputs of last CLSTM layer = B, T, C, H, W
+        y_out_rev = y_out_rev[-1] # outputs of last CLSTM layer = B, T, C, H, W
+
+        reversed_idx = list(reversed(range(y_out_rev.shape[1])))
+        y_out_rev = y_out_rev[:, reversed_idx, ...] # reverse temporal outputs.
+        b,t,c,h,w = y_out_fwd.shape
+        y_out_fwd = torch.reshape(y_out_fwd, (b, t*c, h, w))
+        y_out_rev = torch.reshape(y_out_rev, (b, t*c, h, w))
+
+        ycat = torch.cat((torch.squeeze(y_out_fwd, 1), torch.squeeze(y_out_rev, 1)), dim=1)
+        
+        return ycat
+
+
+class BCDUNet(nn.Module):
+    def __init__(self, input_dim=3, output_dim=3, num_filter=64, norm='instance', bidirectional=False):
+>>>>>>> 4f00caa46f6ef67ccfa1ff4eddc0b2538d027ba4
         super(BCDUNet, self).__init__()
         self.num_filter = num_filter
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2).cuda()
@@ -151,6 +182,7 @@ class BCDUNet(nn.Module):
         self.bn3 = nn.BatchNorm2d(num_filter).cuda()
 
         if bidirectional:
+<<<<<<< HEAD
             print("here")
             self.clstm1 = ConvBLSTM(num_filter*4, num_filter*2, (3, 3), (1,1), 'tanh', list(self.frame_size//4)).cuda()
             self.clstm2 = ConvBLSTM(num_filter*2, num_filter, (3, 3), (1,1), 'tanh', list(self.frame_size//2)).cuda()
@@ -162,6 +194,18 @@ class BCDUNet(nn.Module):
             self.clstm3 = ConvLSTM(num_filter, num_filter//2, (3, 3), (1,1), 'tanh', list(self.frame_size)).cuda()
         
         
+=======
+
+            self.clstm1 = ConvBLSTM(in_channels=num_filter*4, hidden_channels=num_filter, kernel_size=(3, 3), num_layers=1).cuda()
+            self.clstm2 = ConvBLSTM(in_channels=num_filter*2, hidden_channels=num_filter//2, kernel_size=(3, 3), num_layers=1).cuda()
+            self.clstm3 = ConvBLSTM(in_channels=num_filter, hidden_channels=num_filter//4, kernel_size=(3, 3), num_layers=1).cuda()
+        else:
+            self.clstm1 = ConvLSTM(in_channels=num_filter*4, hidden_channels=num_filter, kernel_size=(3, 3), num_layers=1).cuda()
+            self.clstm2 = ConvLSTM(in_channels=num_filter*2, hidden_channels=num_filter//2, kernel_size=(3, 3), num_layers=1).cuda()
+            self.clstm3 = ConvLSTM(in_channels=num_filter, hidden_channels=num_filter//4, kernel_size=(3, 3), num_layers=1).cuda()
+
+            
+>>>>>>> 4f00caa46f6ef67ccfa1ff4eddc0b2538d027ba4
     def forward(self, x):
         N = self.frame_size
         conv1 = self.conv1_0(x)
