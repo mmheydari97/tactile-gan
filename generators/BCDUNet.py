@@ -48,7 +48,7 @@ class ConvLSTMCell(nn.Module):
 
 
 class ConvLSTM(nn.Module):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     def __init__(self, in_channels, out_channels, 
     kernel_size, padding, activation, frame_size, return_sequence=False):
 
@@ -70,15 +70,15 @@ class ConvLSTM(nn.Module):
 
         # Initialize output
         output = torch.zeros(batch_size, seq_len, self.out_channels,  
-        height, width, device=device)
+        height, width, device=self.device)
         
         # Initialize Hidden State
         H = torch.zeros(batch_size, self.out_channels, 
-        height, width, device=device)
+        height, width, device=self.device)
 
         # Initialize Cell Input
         C = torch.zeros(batch_size,self.out_channels, 
-        height, width, device=device)
+        height, width, device=self.device)
 
         # Unroll over time steps
         for time_step in range(seq_len):
@@ -150,12 +150,10 @@ class BCDUNet(nn.Module):
         self.bn3 = nn.BatchNorm2d(num_filter).cuda()
 
         if bidirectional:
-            print("here")
             self.clstm1 = ConvBLSTM(num_filter*4, num_filter*2, (3, 3), (1,1), 'tanh', list(self.frame_size//4)).cuda()
             self.clstm2 = ConvBLSTM(num_filter*2, num_filter, (3, 3), (1,1), 'tanh', list(self.frame_size//2)).cuda()
             self.clstm3 = ConvBLSTM(num_filter, num_filter//2, (3, 3), (1,1), 'tanh', list(self.frame_size)).cuda()
         else:
-            print("there")
             self.clstm1 = ConvLSTM(num_filter*4, num_filter*2, (3, 3), (1,1), 'tanh', list(self.frame_size//4)).cuda()
             self.clstm2 = ConvLSTM(num_filter*2, num_filter, (3, 3), (1,1), 'tanh', list(self.frame_size//2)).cuda()
             self.clstm3 = ConvLSTM(num_filter, num_filter//2, (3, 3), (1,1), 'tanh', list(self.frame_size)).cuda()
