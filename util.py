@@ -6,36 +6,6 @@ import os
 import torchvision
 import torchvision.transforms as transforms
 
-#from https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/util/image_pool.py
-class ImagePool():
-    def __init__(self, pool_size):
-        self.pool_size = pool_size
-        if self.pool_size > 0:
-            self.num_imgs = 0
-            self.images = []
-
-    def query(self, images):
-        if self.pool_size == 0:
-            return images
-        return_images = []
-        for image in images:
-            image = torch.unsqueeze(image, 0)
-            if self.num_imgs < self.pool_size:
-                self.num_imgs = self.num_imgs + 1
-                self.images.append(image)
-                return_images.append(image)
-            else:
-                p = random.uniform(0, 1)
-                if p > 0.5:
-                    random_id = random.randint(0, self.pool_size-1)
-                    tmp = self.images[random_id].clone()
-                    self.images[random_id] = image
-                    return_images.append(tmp)
-                else:
-                    return_images.append(image)
-        return_images = torch.cat(return_images, 0)
-        return return_images
-    
 
 def set_requires_grad(nets, requires_grad=False):
     if not isinstance(nets, list):
@@ -45,13 +15,6 @@ def set_requires_grad(nets, requires_grad=False):
             for param in net.parameters():
                 param.requires_grad = requires_grad
 
-def tensor_to_plt(tensor): #takes in a batch
-    if tensor.shape[1] == 5: #for real sketches
-        tensor = tensor[:,0,:,:].unsqueeze(1)
-    grid = torchvision.utils.make_grid(tensor, nrow=8 )
-    grid = grid.cpu().float().numpy()/2 + 0.5
-    grid = grid.transpose(1,2,0)
-    return grid
 
 def init_weights(net, init_type='normal', gain=0.02):
     def init_func(m):
@@ -63,8 +26,6 @@ def init_weights(net, init_type='normal', gain=0.02):
         elif classname.find('BatchNorm2d') != -1:
             init.normal_(m.weight.data, 1.0, gain)
             init.constant_(m.bias.data, 0.0)
-
-    print('Network initialized with weights sampled from N(0,0.02).')
     net.apply(init_func)
     
 def mkdir(path):
