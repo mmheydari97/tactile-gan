@@ -124,7 +124,7 @@ class Train_Pix2Pix:
                 else:
                     real_labels = torch.full(pred_fake.size(),self.real_label_value).to(self.device)
                 fake_labels = torch.full(pred_fake.size(),self.fake_label_value).to(self.device)
-                
+
                 
                 loss_D_fake = self.criterion(pred_fake, fake_labels)
 
@@ -149,7 +149,7 @@ class Train_Pix2Pix:
                 loss_G_GAN = self.criterion(pred_fake, real_labels) #We feed it real_labels as G is trying fool the discriminator
                 lossglist.append(loss_G_GAN.item())
                 
-                loss_G_L1 = nn.L1Loss(real_B,fake_B) #get per pixel L1 Loss
+                loss_G_L1 = nn.L1Loss()(real_B,fake_B) #get per pixel L1 Loss
                 lossl1list.append(loss_G_L1.item())
 
                 loss_G = loss_G_GAN + loss_G_L1 * opt.lambda_A
@@ -220,9 +220,9 @@ parser.add_argument("--epoch_count", type=int, default=0, help="starting epoch, 
 parser.add_argument("--total_iters", type=int, help="total epochs we're training for")
 parser.add_argument("--iter_constant", type=int, default=200, help="how many epochs we keep the learning rate constant")
 parser.add_argument("--lr", type=float, default=0.0002, help="learning rate")
-parser.add_argument("--no_label_smoothing", default=False, action='store_true', help="if written, we will not use one sided label smoothing")
+parser.add_argument("--label_smoothing", default=False, action='store_true', help="if written, we will not use one sided label smoothing")
 parser.add_argument("--beta1", type=float, default=0.5, help="beta1 for our Adam optimizer")
-parser.add_argument("--no_cuda", default=False, action='store_true', help="if written, we will not use gpu accelerated training")
+parser.add_argument("--cuda", default=True, action='store_false', help="if written, we will not use gpu accelerated training")
 parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
 parser.add_argument("--lambda_A", type=float, default=0.1, help="L1 lambda")
 parser.add_argument("--lambda_per", type=float, default=0.0, help="perceptual lambda")
@@ -233,55 +233,22 @@ parser.add_argument("--no_jitter", default=False, action='store_true', help="if 
 parser.add_argument("--folder_name", default="wgan_tactile_unet", help="where we want to save the model to")
 parser.add_argument("--continue_training", default=False, action='store_true', help="if written, we will load the weights for the network brfore training")
 
-args = parser.parse_args()
+opt = parser.parse_args()
 
 
-class Args():
-    '''
-    We set model details as a class that we can pass around
-    '''
-    def __init__(self):
-        self.dir = args.dir
-        self.batch_size = args.batch_size
-        self.test_batch_size = args.test_batch_size
-        self.input_dim = args.input_dim
-        self.output_dim = args.output_dim
-        self.epoch_count = args.epoch_count
-        self.total_iters = args.total_iters
-        self.iter_constant = args.iter_constant
-        self.iter_decay = args.iter_decay
-        self.lr = args.lr
-        self.label_smoothing = not args.no_label_smoothing
-        self.beta1 = args.beta1
-        self.cuda = not args.no_cuda
-        self.threads = args.threads
-        self.lambda_A = args.lambda_A
-        self.lambda_per = args.lambda_per
-        self.gen = args.gen
-        self.disc= args.disc
-        self.flip = not args.no_flip
-        self.jitter = not args.no_jitter
-        self.folder_name = args.folder_name 
-        self.continue_training = args.continue_training
+photo_path_train = os.path.join(opt.dir, "data", "train", "source")
+train_set = get_dataset(photo_path_train, opt)
 
-opt = Args()
+photo_path_test = os.path.join(opt.dir, "data", "test", "source")
+testing_set =  get_dataset(photo_path_test, opt)
 
 
-photo_path_train = os.path.join(args.dir, "data", "train", "source")
-sketch_path_train = os.path.join(args.dir, "data", "train", "tactile")
-train_set = get_dataset(photo_path_train,sketch_path_train, opt,flip=True,jitter=True)
 
-photo_path_test = os.path.join(args.dir, "data", "test", "source")
-sketch_path_test = os.path.join(args.dir,"data", "test", "tactile")
-testing_set =  get_dataset(photo_path_test,sketch_path_test, opt,flip=False,jitter=False)
-
-
-for option in list(opt):
-    experiment = Train_Pix2Pix(option,train_set,testing_set)
-    experiment.train(option)
-    folderpath = os.path.join(args.dir,"models",option.folder_name)
-    model_path = os.path.join(folderpath,option.gen)
-    experiment.save_model(folderpath,model_path)
-    experiment.save_arrays(folderpath)
-    experiment.save_hyper_params(folderpath,opt)
+experiment = Train_Pix2Pix(opt,train_set,testing_set)
+experiment.train(opt)
+folderpath = os.path.join(opt.dir,"models",opt.folder_name)
+model_path = os.path.join(folderpath,opt.gen)
+experiment.save_model(folderpath,model_path)
+experiment.save_arrays(folderpath)
+experiment.save_hyper_params(folderpath,opt)
 

@@ -37,6 +37,7 @@ class PairedDataset(data.Dataset):
         
         self.images = images
 
+
     def __getitem__(self, i):
         if_flip = random.random() < self.flip
         
@@ -53,11 +54,11 @@ class PairedDataset(data.Dataset):
 
         source = transforms.ToTensor()(source)
         source = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(source)
-        
 
         
         tactile_path = self.images[i].replace("source", "tactile").replace("s_", "t_").replace(".png",".tiff")
         tactile = Image.open(tactile_path).convert(mode="L") # https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
+        
         if if_flip:
             tactile = tactile.transpose(Image.FLIP_LEFT_RIGHT)
             
@@ -65,4 +66,10 @@ class PairedDataset(data.Dataset):
             tactile = tactile.resize((self.size, self.size), Image.BICUBIC)
         tactile = mask_encoder(np.array(tactile))
         tactile = transforms.ToTensor()(tactile)
-        return source, tactile
+        return source.float(), tactile.float()
+        
+    def __len__(self):
+        return len(self.images)
+        
+        
+        

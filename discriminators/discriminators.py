@@ -9,7 +9,7 @@ def create_disc(name, in_nc, out_nc):
         netD = GlobalDiscriminator(in_nc, out_nc)
         
     elif name.lower() == "patch":
-        netD = PatchDiscriminator()
+        netD = PatchDiscriminator(in_nc, out_nc)
     else:
         msg = name + " not a valid model"
         raise NameError(msg)  
