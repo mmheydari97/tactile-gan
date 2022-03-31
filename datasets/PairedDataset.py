@@ -36,7 +36,7 @@ class PairedDataset(data.Dataset):
                     images.append(path)
         
         self.images = images
-
+        
 
     def __getitem__(self, i):
         if_flip = random.random() < self.flip

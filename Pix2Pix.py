@@ -53,10 +53,8 @@ class Train_Pix2Pix:
         init_weights(self.netD)
 
      
-
-      
         self.criterion = nn.MSELoss().to(self.device)
-            
+          
         self.real_label_value = 1.0
         self.fake_label_value = 0.0
         
@@ -105,7 +103,7 @@ class Train_Pix2Pix:
             t1 = time.time()
             
             for i, batch in enumerate(self.dataset):
-                if i % 10 == 0:
+                if i % 100 == 0:
                     print("training epoch ",epoch,"batch", i,"/",len(self.dataset))
                 real_A, real_B = batch[0].to(self.device), batch[1].to(self.device) #load in a batch of data
 
@@ -179,8 +177,10 @@ class Train_Pix2Pix:
             self.disc_loss.append(mean(lossdlist))
             self.l1_loss.append(mean(lossl1list))
             self.per_loss.append(mean(lossperlist))
-
-    
+            if opt.checkpoint_interval != -1 and epoch+1%opt.checkpoint_interval == 0:
+                torch.save(self.netG.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/gen_{epoch}")
+                torch.save(self.netD.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/disc_{epoch}")
+                
     def save_model(self,folderpath,modelpath):
         '''
         Saves the models as well as the optimizers
@@ -224,13 +224,15 @@ parser.add_argument("--label_smoothing", default=False, action='store_true', hel
 parser.add_argument("--beta1", type=float, default=0.5, help="beta1 for our Adam optimizer")
 parser.add_argument("--cuda", default=True, action='store_false', help="if written, we will not use gpu accelerated training")
 parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
-parser.add_argument("--lambda_A", type=float, default=0.1, help="L1 lambda")
+parser.add_argument("--lambda_A", type=float, default=5, help="L1 lambda")
 parser.add_argument("--lambda_per", type=float, default=0.0, help="perceptual lambda")
 parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet"], help="generator architecture")
 parser.add_argument("--disc", default="Patch", choices=["Global", "Patch"], help="discriminator architecture")
-parser.add_argument("--no_flip", default=False, action='store_true', help="if written, we will augment the dataset by flipping images")
-parser.add_argument("--no_jitter", default=False, action='store_true', help="if written, we will augment the dataset by varying color, brightness and contrast")
-parser.add_argument("--folder_name", default="wgan_tactile_unet", help="where we want to save the model to")
+parser.add_argument("--flip", default=False, action='store_true', help="if written, we will augment the dataset by flipping images")
+parser.add_argument("--jitter", default=False, action='store_true', help="if written, we will augment the dataset by varying color, brightness and contrast")
+parser.add_argument("--folder_save", default="wgan_tactile_unet", help="where we want to save the model to")
+parser.add_argument("--folder_load", default="wgan_tactile_unet", help="where we want to save the model to")
+parser.add_argument("--checkpoint_interval", type=int, default=-1, help="interval between model checkpoints")
 parser.add_argument("--continue_training", default=False, action='store_true', help="if written, we will load the weights for the network brfore training")
 
 opt = parser.parse_args()
@@ -243,12 +245,17 @@ photo_path_test = os.path.join(opt.dir, "data", "test", "source")
 testing_set =  get_dataset(photo_path_test, opt)
 
 
-
 experiment = Train_Pix2Pix(opt,train_set,testing_set)
-experiment.train(opt)
-folderpath = os.path.join(opt.dir,"models",opt.folder_name)
+
+
+checkpoint_path = os.path.join(f"{opt.dir}","checkpoints", f"{opt.folder_save}/")
+mkdir(checkpoint_path)
+folderpath = os.path.join(opt.dir,"models",opt.folder_save)
 model_path = os.path.join(folderpath,opt.gen)
+experiment.train(opt)
+
 experiment.save_model(folderpath,model_path)
 experiment.save_arrays(folderpath)
 experiment.save_hyper_params(folderpath,opt)
+
 
