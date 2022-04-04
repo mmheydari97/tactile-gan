@@ -1,32 +1,20 @@
 import os
 import numpy as np
-from PIL import Image
-import torch.utils.data as data
-import torchvision.transforms as transforms
+from PIL import Image, ImageOps
+from torch.utils.data as Dataset
+from torchvision import transforms
 import torch
-import random
-import platform
+import cv2
+import albumentations
+import albumentations.augmentations as A
 
 
-def _is_image(filename):
-    img_extensions = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.svg', '.tiff']
-    return any(filename.endswith(extension.lower()) for extension in img_extensions)
 
-def mask_encoder(label_array):
-    labels = sorted(np.unique(label_array))
-    shape = label_array.shape
-    one_hot = np.zeros((*shape, max(labels)+1))
-    for i in range(len(labels)):
-        one_hot[:,:,labels[i]] = label_array==labels[i]
-    return one_hot
-
-class PairedDataset(data.Dataset):
-    def __init__(self, img_dir, size=256, flip=0.2, jitter=0.2):
+class PairedDataset(Dataset):
+    def __init__(self, img_dir, size=256, aug=False):
         super(PairedDataset, self).__init__()
         self.size = size
         self.img_dir = img_dir
-        self.flip = flip
-        self.jitter = jitter
         
         images = []
         for root, _ , fnames in sorted(os.walk(self.img_dir)):
@@ -36,37 +24,67 @@ class PairedDataset(data.Dataset):
                     images.append(path)
         
         self.images = images
+        self.aug = aug
+
+        if aug:
+            self.aug_t = albumentations.Compose([
+                            A.transforms.HorizontalFlip(p=0.5),
+                            A.transforms.ShiftScaleRotate(shift_limit=0.1,
+                                                          scale_limit=0.2,
+                                                          rotate_limit=15,
+                                                          border_mode=cv2.BORDER_CONSTANT,
+                                                          value=(255,255,255),
+                                                          mask_value=0,
+                                                          p=0.5),])
+
+    
+    def _is_image(filename):
+        img_extensions = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.svg', '.tiff']
+        return any(filename.endswith(extension.lower()) for extension in img_extensions)
+
+    
+    def _mask_encoder(label_array):
+        labels = sorted(np.unique(label_array))
+        shape = label_array.shape
+        one_hot = np.zeros((max(labels)+1, *shape))
+        for i in range(len(labels)):
+            one_hot[i][label_array==labels[i]] = 1.0 
+        return one_hot
+
+
+    @staticmethod
+    def preprocess(img):
+        image_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)
+        ])
+        img = image_transform(img)
+        return img
 
 
     def __getitem__(self, i):
-        if_flip = random.random() < self.flip
         
         source = Image.open(self.images[i]).convert('RGB')
-        
-        if if_flip:
-            source = source.transpose(Image.FLIP_LEFT_RIGHT)
-        if random.random() < self.jitter:
-            source = transforms.ColorJitter(0.02, 0.02, 0.02, 0.02)(source)
-        
-        if source.size != (self.size,self.size):
-            source = source.resize((self.size, self.size), Image.BICUBIC)
-        
-
-        source = transforms.ToTensor()(source)
-        source = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(source)
-
-        
         tactile_path = self.images[i].replace("source", "tactile").replace("s_", "t_").replace(".png",".tiff")
-        tactile = Image.open(tactile_path).convert(mode="L") # https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
-        
-        if if_flip:
-            tactile = tactile.transpose(Image.FLIP_LEFT_RIGHT)
-            
-        if tactile.size != (self.size,self.size):
-            tactile = tactile.resize((self.size, self.size), Image.BICUBIC)
-        tactile = mask_encoder(np.array(tactile))
-        tactile = transforms.ToTensor()(tactile)
-        return source.float(), tactile.float()
+        tactile = Image.open(tactile_path).convert(mode="L") 
+         
+        if self.aug:
+            augmented = self.aug_t(image=np.array(source), mask=np.array(tactile))
+            aug_img_pil = Image.fromarray(augmented['image'])
+                # apply pixel-wise transformation
+                img_tensor = self.preprocess(aug_img_pil)
+
+                mask_np = np.array(augmented['mask'])
+                labels = self._mask_labels(mask_np)
+
+            else:
+                img_tensor = self.preprocess(img_pil)
+                mask_np = np.array(mask_pil)
+                labels = self._mask_labels(mask_np)
+
+            mask_tensor = torch.tensor(labels, dtype=torch.float)
+            mask_tensor = (mask_tensor - 0.5) / 0.5
+            return img_tensor, mask_tensor
         
     def __len__(self):
         return len(self.images)
