@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from PIL import Image, ImageOps
-from torch.utils.data as Dataset
+from torch.utils.data import Dataset
 from torchvision import transforms
 import torch
 import cv2
@@ -22,7 +22,7 @@ class PairedDataset(Dataset):
         images = []
         for root, _ , fnames in sorted(os.walk(self.img_dir)):
              for fname in fnames:
-                if _is_image(fname):
+                if self._is_image(fname):
                     path = os.path.join(root, fname)
                     images.append(path)
         
@@ -39,7 +39,7 @@ class PairedDataset(Dataset):
                                                           mask_value=0,
                                                           p=0.5),])
 
-    
+    @static_method
     def _is_image(filename):
         img_extensions = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.svg', '.tiff']
         return any(filename.endswith(extension.lower()) for extension in img_extensions)
