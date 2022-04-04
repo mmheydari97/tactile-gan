@@ -170,7 +170,7 @@ class Train_Pix2Pix:
                 torch.save(self.netG.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/gen_{epoch}")
                 torch.save(self.netD.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/disc_{epoch}")
 
-
+    @staticmethod
     def get_scheduler(optimizer):
 
         milestone = np.int16(np.linspace(opt.iter_constant, opt.total_iters, 11)[:-1])

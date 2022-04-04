@@ -31,7 +31,7 @@ class PairedDataset(Dataset):
         if aug:
             self.aug_t = albumentations.Compose([
                             A.transforms.HorizontalFlip(p=0.5),
-                            A.transforms.ShiftScaleRotate(shift_limit=0.1,
+                            A.geometric.transforms.ShiftScaleRotate(shift_limit=0.1,
                                                           scale_limit=0.2,
                                                           rotate_limit=15,
                                                           border_mode=cv2.BORDER_CONSTANT,
@@ -39,13 +39,13 @@ class PairedDataset(Dataset):
                                                           mask_value=0,
                                                           p=0.5),])
 
-    @static_method
+    @staticmethod
     def _is_image(filename):
         img_extensions = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.svg', '.tiff']
         return any(filename.endswith(extension.lower()) for extension in img_extensions)
 
-    
-    def _mask_encoder(label_array):
+    @staticmethod
+    def _mask_labels(label_array):
         labels = sorted(np.unique(label_array))
         shape = label_array.shape
         one_hot = np.zeros((max(labels)+1, *shape))
