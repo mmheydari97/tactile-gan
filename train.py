@@ -55,7 +55,7 @@ class Train_Pix2Pix:
         self.optimizers.append(self.optimizer_G)
         self.optimizers.append(self.optimizer_D)
         for optimizer in self.optimizers:
-            self.schedulers.append(get_scheduler(optimizer))
+            self.schedulers.append(self.get_scheduler(optimizer))
 
         #logging each epoch losses
         self.gen_loss = []
@@ -169,6 +169,13 @@ class Train_Pix2Pix:
             if opt.checkpoint_interval != -1 and epoch+1%opt.checkpoint_interval == 0:
                 torch.save(self.netG.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/gen_{epoch}")
                 torch.save(self.netD.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/disc_{epoch}")
+
+
+    def get_scheduler(optimizer):
+
+        milestone = np.int16(np.linspace(opt.iter_constant, opt.total_iters, 11)[:-1])
+        scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=list(milestone), gamma=0.8)
+        return scheduler
                 
     def save_model(self,folderpath,modelpath):
         '''
