@@ -9,7 +9,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from statistics import mean
-  
+
 from torch.nn import init
 from torch.optim import lr_scheduler
 import numpy as np
@@ -20,25 +20,14 @@ from datasets.datasets import get_dataset
 from util import set_requires_grad, init_weights, mkdir, VGGPerceptualLoss
 
 
-def get_scheduler(optimizer):
-    '''
-    Learning rate scheduler. We want to start off at a constant rate and slowly decay
-    '''
-
-    milestone = np.int16(np.linspace(opt.iter_constant, opt.total_iters, 11)[:-1])
-    scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=list(milestone), gamma=0.8)
-    return scheduler
-
-
 class Train_Pix2Pix:
     '''
     GAN model for Pix2Pix implementation. Trains models, saves models, saves training results and details about the models.
     '''
-    def __init__(self,opt,traindataset,testdataset):
+    def __init__(self,opt,traindataset):
         
         #load in the datasets
         self.dataset = DataLoader(dataset=traindataset, batch_size=opt.batch_size, shuffle=True,num_workers=opt.threads)
-        self.test_set = DataLoader(dataset=testdataset, batch_size=opt.test_batch_size, shuffle=False,num_workers=opt.threads)
 
         #tensorflow logger
         self.device = torch.device("cuda:0" if opt.cuda else "cpu")
@@ -213,7 +202,6 @@ class Train_Pix2Pix:
 parser = argparse.ArgumentParser()
 parser.add_argument("--dir", help="data directory")
 parser.add_argument("--batch_size", type=int, default=1, help="training batch size")
-parser.add_argument("--test_batch_size", type=int, default=16, help="test batch size")
 parser.add_argument("--input_dim", type=int, default=3, help="input depth size")
 parser.add_argument("--output_dim", type=int, default=4, help="output depth size")
 parser.add_argument("--epoch_count", type=int, default=0, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
@@ -228,25 +216,19 @@ parser.add_argument("--lambda_A", type=float, default=5, help="L1 lambda")
 parser.add_argument("--lambda_per", type=float, default=0.0, help="perceptual lambda")
 parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet"], help="generator architecture")
 parser.add_argument("--disc", default="Patch", choices=["Global", "Patch"], help="discriminator architecture")
-parser.add_argument("--flip", default=False, action='store_true', help="if written, we will augment the dataset by flipping images")
-parser.add_argument("--jitter", default=False, action='store_true', help="if written, we will augment the dataset by varying color, brightness and contrast")
-parser.add_argument("--folder_save", default="wgan_tactile_unet", help="where we want to save the model to")
-parser.add_argument("--folder_load", default="wgan_tactile_unet", help="where we want to save the model to")
+parser.add_argument("--no_aug", default=False, action='store_true', help="if written, we won't augment the dataset")
+parser.add_argument("--folder_save", default="pix2seg", help="where we want to save the model to")
+parser.add_argument("--folder_load", default="pix2seg", help="where we want to load the model from")
 parser.add_argument("--checkpoint_interval", type=int, default=-1, help="interval between model checkpoints")
 parser.add_argument("--continue_training", default=False, action='store_true', help="if written, we will load the weights for the network brfore training")
 
 opt = parser.parse_args()
 
-
+ 
 photo_path_train = os.path.join(opt.dir, "data", "train", "source")
-train_set = get_dataset(photo_path_train, opt)
+train_set = get_dataset(photo_path_train, opt, mode='train')
 
-photo_path_test = os.path.join(opt.dir, "data", "test", "source")
-testing_set =  get_dataset(photo_path_test, opt)
-
-
-experiment = Train_Pix2Pix(opt,train_set,testing_set)
-
+experiment = Train_Pix2Pix(opt,train_set)
 
 checkpoint_path = os.path.join(f"{opt.dir}","checkpoints", f"{opt.folder_save}/")
 mkdir(checkpoint_path)

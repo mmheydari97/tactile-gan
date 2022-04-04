@@ -11,11 +11,14 @@ import albumentations.augmentations as A
 
 
 class PairedDataset(Dataset):
-    def __init__(self, img_dir, size=256, aug=False):
+    def __init__(self, img_dir, size=256, mode='train', aug=False):
         super(PairedDataset, self).__init__()
-        self.size = size
         self.img_dir = img_dir
+        self.size = size
+        self.mode = mode
+        self.aug = aug
         
+
         images = []
         for root, _ , fnames in sorted(os.walk(self.img_dir)):
              for fname in fnames:
@@ -24,7 +27,6 @@ class PairedDataset(Dataset):
                     images.append(path)
         
         self.images = images
-        self.aug = aug
 
         if aug:
             self.aug_t = albumentations.Compose([
@@ -68,23 +70,21 @@ class PairedDataset(Dataset):
         tactile_path = self.images[i].replace("source", "tactile").replace("s_", "t_").replace(".png",".tiff")
         tactile = Image.open(tactile_path).convert(mode="L") 
          
-        if self.aug:
+        if self.mode=='train' and self.aug:
             augmented = self.aug_t(image=np.array(source), mask=np.array(tactile))
             aug_img_pil = Image.fromarray(augmented['image'])
-                # apply pixel-wise transformation
-                img_tensor = self.preprocess(aug_img_pil)
+            # apply pixel-wise transformation
+            img_tensor = self.preprocess(aug_img_pil)
+            mask_np = np.array(augmented['mask'])
 
-                mask_np = np.array(augmented['mask'])
-                labels = self._mask_labels(mask_np)
+        else:
+            img_tensor = self.preprocess(img_pil)
+            mask_np = np.array(mask_pil)
 
-            else:
-                img_tensor = self.preprocess(img_pil)
-                mask_np = np.array(mask_pil)
-                labels = self._mask_labels(mask_np)
-
-            mask_tensor = torch.tensor(labels, dtype=torch.float)
-            mask_tensor = (mask_tensor - 0.5) / 0.5
-            return img_tensor, mask_tensor
+        labels = self._mask_labels(mask_np)
+        mask_tensor = torch.tensor(labels, dtype=torch.float)
+        mask_tensor = (mask_tensor - 0.5) / 0.5
+        return img_tensor, mask_tensor
         
     def __len__(self):
         return len(self.images)
