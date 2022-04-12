@@ -48,7 +48,7 @@ from generators.generators import create_gen
 from discriminators.discriminators import create_disc
 from datasets.datasets import get_dataset
 from util import ImagePool, set_requires_grad,tensor_to_plt,init_weights, mkdir
-from Tensorboard_Logger import Logger
+
 
 class Opt:
      def __init__(self, dictionary):

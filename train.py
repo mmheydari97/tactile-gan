@@ -1,3 +1,4 @@
+from telnetlib import GA
 import torch
 import torch.nn as nn
 
@@ -14,7 +15,7 @@ from torch.nn import init
 from torch.optim import lr_scheduler
 import numpy as np
 import time
-from generators.generators import create_gen
+from generators.generators import create_gen, GANLoss
 from discriminators.discriminators import create_disc
 from datasets.datasets import get_dataset
 from util import set_requires_grad, init_weights, mkdir, VGGPerceptualLoss
@@ -27,7 +28,7 @@ class Train_Pix2Pix:
     def __init__(self,opt,traindataset):
         
         #load in the datasets
-        self.dataset = DataLoader(dataset=traindataset, batch_size=opt.batch_size, shuffle=True,num_workers=opt.threads)
+        self.dataset = DataLoader(dataset=traindataset, batch_size=opt.batch_size, shuffle=True, num_workers=opt.threads)
 
         #tensorflow logger
         self.device = torch.device("cuda:0" if opt.cuda else "cpu")
@@ -42,7 +43,7 @@ class Train_Pix2Pix:
         init_weights(self.netD)
 
      
-        self.criterion = nn.MSELoss().to(self.device)
+        self.gan_loss = GANLoss(gan_mode='hinge', tensor=torch.cuda.FloatTentor)
           
         self.real_label_value = 1.0
         self.fake_label_value = 0.0
@@ -104,28 +105,27 @@ class Train_Pix2Pix:
                 self.optimizer_D.zero_grad()
                 
                 pred_fake = self.netD(real_A, fake_B.detach()) #generate predictions on fake images
-                
-                #create labels, either 1's or 0.9 if we're smooting.  
-                if opt.label_smoothing:
-                    real_labels = torch.normal(.9, .02, size=pred_fake.size()).to(self.device)
-                else:
-                    real_labels = torch.full(pred_fake.size(),self.real_label_value).to(self.device)
-                fake_labels = torch.full(pred_fake.size(),self.fake_label_value).to(self.device)
-
-                
-                loss_D_fake = self.criterion(pred_fake, fake_labels)
-
-                #Get the second half of the loss. Compare real predictions to labels of 1
-        
                 pred_real = self.netD(real_A, real_B)
-                loss_D_real = self.criterion(pred_real, real_labels)
+                
+                # #create labels, either 1's or 0.9 if we're smooting.  
+                # if opt.label_smoothing:
+                #     real_labels = torch.normal(.9, .02, size=pred_fake.size()).to(self.device)
+                # else:
+                #     real_labels = torch.full(pred_fake.size(),self.real_label_value).to(self.device)
+                # fake_labels = torch.full(pred_fake.size(),self.fake_label_value).to(self.device)
+
+                
+                loss_D_fake = self.gan_loss(pred_fake, False, for_discriminator=True).mean()
+
+                #Get the second half of the loss. Compare real predictions to labels of 1        
+                loss_D_real = self.gan_loss(pred_real, True, for_discriminator=True).mean()
                 
                 loss_D = (loss_D_fake + loss_D_real)/2
                 
                 lossdlist.append(loss_D.item())
                 
                 #now that we have the full loss we back propogate
-                loss_D.backward(retain_graph=False)
+                loss_D.backward()
                 self.optimizer_D.step()
 
                 # Optimize G #####################################
@@ -133,7 +133,7 @@ class Train_Pix2Pix:
                 self.optimizer_G.zero_grad()
 
                 pred_fake = self.netD(real_A, fake_B) #generate D predictions of fake images
-                loss_G_GAN = self.criterion(pred_fake, real_labels) #We feed it real_labels as G is trying fool the discriminator
+                loss_G_GAN = self.gan_loss(pred_fake, True, for_discriminator=False).mean() #We feed it real_labels as G is trying fool the discriminator
                 lossglist.append(loss_G_GAN.item())
                 
                 loss_G_L1 = nn.L1Loss()(real_B,fake_B) #get per pixel L1 Loss
