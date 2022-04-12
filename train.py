@@ -51,8 +51,8 @@ class Train_Pix2Pix:
         #optimizers and attach them to schedulers that change learning rate
         self.schedulers = []
         self.optimizers = []
-        self.optimizer_G = torch.optim.Adam(self.netG.parameters(),lr=opt.lr, betas=(opt.beta1, 0.999))
-        self.optimizer_D = torch.optim.Adam(self.netD.parameters(),lr=opt.lr, betas=(opt.beta1, 0.999))
+        self.optimizer_G = torch.optim.Adam(self.netG.parameters(),lr=opt.lr, betas=(opt.beta1, 0.99))
+        self.optimizer_D = torch.optim.Adam(self.netD.parameters(),lr=opt.lr, betas=(opt.beta1, 0.99))
         self.optimizers.append(self.optimizer_G)
         self.optimizers.append(self.optimizer_D)
         for optimizer in self.optimizers:
@@ -214,9 +214,9 @@ parser.add_argument("--output_dim", type=int, default=4, help="output depth size
 parser.add_argument("--epoch_count", type=int, default=0, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
 parser.add_argument("--total_iters", type=int, help="total epochs we're training for")
 parser.add_argument("--iter_constant", type=int, default=200, help="how many epochs we keep the learning rate constant")
-parser.add_argument("--lr", type=float, default=0.0002, help="learning rate")
+parser.add_argument("--lr", type=float, default=0.002, help="learning rate")
 parser.add_argument("--label_smoothing", default=False, action='store_true', help="if written, we will not use one sided label smoothing")
-parser.add_argument("--beta1", type=float, default=0.5, help="beta1 for our Adam optimizer")
+parser.add_argument("--beta1", type=float, default=0.01, help="beta1 for our Adam optimizer")
 parser.add_argument("--cuda", default=True, action='store_false', help="if written, we will not use gpu accelerated training")
 parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
 parser.add_argument("--lambda_A", type=float, default=5, help="L1 lambda")
