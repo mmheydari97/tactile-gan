@@ -43,7 +43,7 @@ class Train_Pix2Pix:
         init_weights(self.netD)
 
      
-        self.gan_loss = GANLoss(gan_mode='hinge', tensor=torch.cuda.FloatTentor)
+        self.gan_loss = GANLoss(gan_mode='hinge', tensor=torch.cuda.FloatTensor)
           
         self.real_label_value = 1.0
         self.fake_label_value = 0.0
