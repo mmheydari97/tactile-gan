@@ -55,7 +55,7 @@ class UNet_plusplus(nn.Module):
 
         self.final = nn.Sequential(
             nn.Conv2d(nb_filter[0], out_channels, kernel_size=1),
-            nn.Softmax(dim=1),
+            # nn.Softmax(dim=1),
         )
 
 

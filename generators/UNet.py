@@ -63,7 +63,7 @@ class UNet(nn.Module):
             nn.Upsample(scale_factor=2),
             nn.ZeroPad2d((1, 0, 1, 0)),
             nn.Conv2d(128, out_channels, 4, padding=1),
-            nn.Softmax(dim=1),
+            # nn.Softmax(dim=1),
         )
 
     def forward(self, x):
