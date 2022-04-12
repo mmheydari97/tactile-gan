@@ -28,6 +28,8 @@ class GANLoss(nn.Module):
         self.fake_label = target_fake_label
         self.real_label_tensor = None
         self.fake_label_tensor = None
+        self.zero_tensor = None
+
         self.Tensor = tensor
         self.gan_mode = gan_mode
 
