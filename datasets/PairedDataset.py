@@ -58,7 +58,7 @@ class PairedDataset(Dataset):
     def preprocess(img):
         image_transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)
+            # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)
         ])
         img = image_transform(img)
         return img
@@ -78,8 +78,8 @@ class PairedDataset(Dataset):
             mask_np = np.array(augmented['mask'])
 
         else:
-            img_tensor = self.preprocess(img_pil)
-            mask_np = np.array(mask_pil)
+            img_tensor = self.preprocess(source)
+            mask_np = np.array(tactile)
 
         labels = self._mask_labels(mask_np)
         mask_tensor = torch.tensor(labels, dtype=torch.float)
