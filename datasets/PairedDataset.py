@@ -50,7 +50,7 @@ class PairedDataset(Dataset):
         shape = label_array.shape
         one_hot = np.zeros((max(labels)+1, *shape))
         for i in range(len(labels)):
-            one_hot[i][label_array==labels[i]] = 1.0 
+            one_hot[labels[i]][label_array==labels[i]] = 1.0 
         return one_hot
 
 
@@ -58,7 +58,7 @@ class PairedDataset(Dataset):
     def preprocess(img):
         image_transform = transforms.Compose([
             transforms.ToTensor(),
-            # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), inplace=True)
         ])
         img = image_transform(img)
         return img

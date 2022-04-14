@@ -1,5 +1,8 @@
 import os
 import json
+from sys import platlibdir
+import numpy as np
+import matplotlib.pyplot as plt
 import torch
 
 from torch.utils.data import DataLoader
@@ -38,26 +41,35 @@ def load_data(photo_path,opt):
 def unnormalize(a):
     return a/2 +0.5
 
-def concat_images(photo,sketch,output):
-    return torch.cat((photo,sketch,output),2)
+def visualize_mask(img):
+    palette = {0:[1.,1.,1.], 1:[0,0,0], 2:[0.3,0.3,0.3], 3:[0.1,0.5,0.7]}
+    res = np.zeros((3,256,256), np.float16)
+    for k, v in palette.items():
+        res[:, img == k] = np.array(v).reshape(-1,1)
+    return res
 
-def save_images(dataset,path,reduce_channels=True):
+
+def concat_images(photo,sketch,output):
+    return np.swapaxes(np.concatenate((photo,sketch,output),1), 0, 2)
+
+def save_images(dataset,path, reduce_channels=True):
     for i, batch in enumerate(dataset):
         real_A, real_B = batch[0], batch[1]
         with torch.no_grad():
             out = Gen(real_A.to(device))[0].cpu()
-        a = unnormalize(real_A[0])
-        b = unnormalize(real_B[0])
-
+        a = unnormalize(real_A[0]).numpy()
+        b = unnormalize(real_B[0]).numpy()
+        
         if reduce_channels:
-            out = torch.unsqueeze(torch.argmax(out, dim=0), dim=0)
-            b = torch.unsqueeze(torch.argmax(b, dim=0), dim=0) 
-            b = torch.cat((b,b,b),0)
-            out = torch.cat((out,out,out),0)
+            b = np.argmax(b, axis=0)
+            out = np.argmax(out, axis=0)
+
+            b = visualize_mask(b)
+            out = visualize_mask(out)
         
         file_name = str(i) +".png"
-        save_image(concat_images(a,b,out), os.path.join(path,file_name))
-        # save_image(a,os.path.join(path,file_name))
+        plt.imsave(os.path.join(path,file_name),concat_images(a,b,out)) 
+        print(f"file saved at: {os.path.join(path,file_name)}")
 
 folder= "pix2seg"
 opt = load_opt(folder)
