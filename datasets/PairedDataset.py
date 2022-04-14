@@ -42,7 +42,7 @@ class PairedDataset(Dataset):
     @staticmethod
     def _is_image(filename):
         img_extensions = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.svg', '.tiff']
-        return any(filename.endswith(extension.lower()) for extension in img_extensions)
+        return any(filename.lower().endswith(extension) for extension in img_extensions)
 
     @staticmethod
     def _mask_labels(label_array):
