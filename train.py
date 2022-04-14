@@ -168,7 +168,8 @@ class Train_Pix2Pix:
             self.per_loss.append(mean(lossperlist))
             if opt.checkpoint_interval != -1 and epoch+1%opt.checkpoint_interval == 0:
                 torch.save(self.netG.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/gen_{epoch}")
-                torch.save(self.netD.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/disc_{epoch}")
+                # torch.save(self.netD.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/disc_{epoch}")
+                print("one checkpoint saved")
 
     @staticmethod
     def get_scheduler(optimizer):

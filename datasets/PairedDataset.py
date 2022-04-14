@@ -48,9 +48,11 @@ class PairedDataset(Dataset):
     def _mask_labels(label_array):
         labels = sorted(np.unique(label_array))
         shape = label_array.shape
-        one_hot = np.zeros((max(labels)+1, *shape))
-        for i in range(len(labels)):
-            one_hot[labels[i]][label_array==labels[i]] = 1.0 
+        assert max(labels) == 3, f"unexpected value for context channel: {max(labels)}" 
+        one_hot = np.zeros((4, *shape))
+        
+        for l in labels:
+            one_hot[l][label_array==l] = 1.0 
         return one_hot
 
 
