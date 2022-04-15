@@ -1,81 +1,32 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
-# from google.colab import drive
-# import os
-
-# if os.getcwd() != '/content/drive/My Drive/Pix2Pix':
-#     drive.mount('/content/drive')
-#     get_ipython().run_line_magic('cd', 'drive/MyDrive/Pix2Pix/')
-# get_ipython().run_line_magic('ls', '')
-
-
-# In[ ]:
-
-
 import torch
 import torch.nn as nn
 
 import argparse
 import os
-import sys
-from math import log10
 import json
 
-import torch.optim as optim
 from torch.utils.data import DataLoader
-import torch.backends.cudnn as cudnn
-
-import torchvision
-import torchvision.transforms as transforms
-
 
 from statistics import mean
   
-
-from torch.nn import init
-import functools
-from torch.autograd import Variable
 from torch.optim import lr_scheduler
 import numpy as np
 import time
 from generators.generators import create_gen
 from discriminators.discriminators import create_disc
 from datasets.datasets import get_dataset
-from util import ImagePool, set_requires_grad,tensor_to_plt,init_weights, mkdir, VGGPerceptualLoss
+from util import set_requires_grad,init_weights, mkdir, VGGPerceptualLoss
 from Tensorboard_Logger import Logger
-
-
-
-
-# In[ ]:
-
-
-def get_scheduler(optimizer):
-    '''
-    Learning rate scheduler. We want to start off at a constant rate and slowly decay
-    '''
-    def lambda_rule(epoch):
-        lr_l = 1.0 - max(0, epoch + 1 + opt.epoch_count - opt.iter_constant) / float(opt.iter_decay + 1)
-        if lr_l < 0.0001:
-            lr_l = 0.0001
-        return lr_l
-    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_rule)
-    return scheduler
 
 
 class Train_Pix2Pix:
     '''
     GAN model for Pix2Pix implementation. Trains models, saves models, saves training results and details about the models.
     '''
-    def __init__(self,opt,traindataset,testdataset):
+    def __init__(self,opt,traindataset):
         
         #load in the datasets
         self.dataset = DataLoader(dataset=traindataset, batch_size=opt.batch_size, shuffle=True,num_workers=opt.threads)
-        self.test_set = DataLoader(dataset=testdataset, batch_size=opt.test_batch_size, shuffle=False,num_workers=opt.threads)
         self.atest, self.btest = next(iter(self.test_set))
         self.dataviz = DataLoader(dataset=traindataset, batch_size=opt.batch_size, shuffle=False,num_workers=opt.threads)
         self.atrain, self.btrain = next(iter(self.dataviz))
@@ -113,12 +64,12 @@ class Train_Pix2Pix:
         #optimizers and attach them to schedulers that change learning rate
         self.schedulers = []
         self.optimizers = []
-        self.optimizer_G = torch.optim.Adam(self.netG.parameters(),lr=opt.lr, betas=(opt.beta1, 0.999))
-        self.optimizer_D = torch.optim.Adam(self.netD.parameters(),lr=opt.lr, betas=(opt.beta1, 0.999))
+        self.optimizer_G = torch.optim.Adam(self.netG.parameters(),lr=opt.lr, betas=(opt.beta1, 0.99))
+        self.optimizer_D = torch.optim.Adam(self.netD.parameters(),lr=opt.lr, betas=(opt.beta1, 0.99))
         self.optimizers.append(self.optimizer_G)
         self.optimizers.append(self.optimizer_D)
         for optimizer in self.optimizers:
-            self.schedulers.append(get_scheduler(optimizer))
+            self.schedulers.append(self.get_scheduler(optimizer))
 
         #logging each epoch losses
         self.gen_loss = []
@@ -127,7 +78,7 @@ class Train_Pix2Pix:
         self.per_loss = []
 
         if opt.continue_training:
-            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_name,opt.gen))
+            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_load,opt.gen))
 
             self.netG.load_state_dict(checkpoint["gen"])
             self.optimizer_G.load_state_dict(checkpoint["optimizerG_state_dict"])
@@ -144,8 +95,8 @@ class Train_Pix2Pix:
         if opt.lambda_per != 0:
             perceptual = VGGPerceptualLoss(resize=True)
 
-        for epoch in range(opt.epoch_count, opt.total_iters + 1):
-
+        for i in range(opt.total_iters):
+            epoch = i + opt.epoch_count
             #monitor each minibatch loss
             lossdlist = []
             lossglist = []
@@ -154,9 +105,9 @@ class Train_Pix2Pix:
             
             t1 = time.time()
             
-            for i, batch in enumerate(self.dataset):
-                if i % 10 == 0:
-                    print("training epoch ",epoch,"batch", i,"/",len(self.dataset))
+            for j, batch in enumerate(self.dataset):
+                if j % 100 == 0:
+                    print("training epoch ",epoch,"batch", j,"/",len(self.dataset))
                 real_A, real_B = batch[0].to(self.device), batch[1].to(self.device) #load in a batch of data
 
                 # (generate fake images)
@@ -216,7 +167,7 @@ class Train_Pix2Pix:
                 if not(opt.loss == "wloss"):
                     loss_G_GAN = self.criterion(pred_fake, real_labels) #We feed it real_labels as G is trying fool the discriminator
                 
-                loss_G_L1 = self.get_l1_loss(real_B,fake_B) #get per pixel L1 Loss
+                loss_G_L1 = nn.L1Loss()(real_B,fake_B) #get per pixel L1 Loss
                 lossl1list.append( loss_G_L1.item())
 
                 if not(opt.loss == "wloss"):
@@ -255,7 +206,7 @@ class Train_Pix2Pix:
             self.per_loss.append(mean(lossperlist))
 
 
-            if epoch % 1 == 0:                
+            if opt.checkpoint_interval != -1 and epoch % opt.checkpoint_interval == 0:                
                 with torch.no_grad():
                     out1 = self.netG(self.atrain.to(self.device))
                     title= "Epoch "+str(epoch) +"Training"
@@ -264,16 +215,22 @@ class Train_Pix2Pix:
                     out2 = self.netG(self.atest.to(self.device))
                     title= "Epoch "+str(epoch)
                     self.writer.write_sketch_to_tb(out2.detach(),title)
-            
+                torch.save(self.netG.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/{opt.gen}_{epoch}")
+                # torch.save(self.netD.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/{opt.disc}_{epoch}")            
 
             
         self.writer.plot_losses(self.gen_loss,self.disc_loss,self.l1_loss)
     
-    def save_model(self,folderpath,modelpath):
+    @staticmethod
+    def get_scheduler(optimizer):
+        milestone = np.int16(np.linspace(opt.iter_constant, opt.total_iters, 11)[:-1])
+        scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=list(milestone), gamma=0.8)
+        return scheduler
+        
+    def save_model(self,modelpath):
         '''
         Saves the models as well as the optimizers
         '''
-        mkdir(folderpath)
         torch.save({
             'gen': self.netG.state_dict(),
             'disc': self.netD.state_dict(),
@@ -314,19 +271,6 @@ class Train_Pix2Pix:
         
         loss = pred_fake.mean() - pred_real.mean() + gp* gp_lambda
         return loss
-    
-    def get_l1_loss(self,real_B,fake_B):
-        '''
-        L1 Loss for Pix2Pix. Compares the Pixel Loss between the fake image and it's closest real image
-        '''
-        if real_B.shape[1] != fake_B.shape[1]:
-            fake_B = fake_B.expand(-1, real_B.shape[1], -1, -1)
-        L1 = torch.abs(fake_B - real_B)
-        L1 = L1.view(-1, real_B.shape[1], real_B.shape[2]*real_B.shape[3])
-        L1 = torch.mean(L1, 2)
-        min_L1, min_idx = torch.min(L1, 1)
-        loss_G_L1 = torch.mean(min_L1)
-        return loss_G_L1
         
 
 parser = argparse.ArgumentParser()
@@ -340,92 +284,39 @@ parser.add_argument("--disc_filters", type=int, default=64, help="starting filte
 parser.add_argument("--epoch_count", type=int, default=1, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
 parser.add_argument("--total_iters", type=int, help="total epochs we're training for")
 parser.add_argument("--iter_constant", type=int, default=200, help="how many epochs we keep the learning rate constant")
-parser.add_argument("--iter_decay", type=int, default=850, help="when we start decaying the learning rate")
 parser.add_argument("--lr", type=float, default=0.0002, help="learning rate")
-parser.add_argument("--no_label_smoothing", default=False, action='store_true', help="if written, we will not use one sided label smoothing")
-parser.add_argument("--beta1", type=float, default=0.5, help="beta1 for our Adam optimizer")
-parser.add_argument("--no_cuda", default=False, action='store_true', help="if written, we will not use gpu accelerated training")
+parser.add_argument("--label_smoothing", default=False, action='store_true', help="if written, we will use one sided label smoothing")
+parser.add_argument("--beta1", type=float, default=0.01, help="beta1 for our Adam optimizer")
+parser.add_argument("--cuda", default=True, action='store_false', help="if written, we will not use gpu accelerated training")
 parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
 parser.add_argument("--lambda_A", type=float, default=0.1, help="L1 lambda")
+parser.add_argument("--lambda_per", type=float, default=0.1, help="perceptual lambda")
 parser.add_argument("--lambda_GP", type=float, default=10, help="Gradient_penalty loss")
 parser.add_argument("--norm", default="instance", help="normalization mode")
 parser.add_argument("--gen", default="UNet++", choices=["Resnet", "UNet++", "UNet", "UNet-no-skips", "BCDUNet"], help="generator architecture")
 parser.add_argument("--disc", default="Patch", choices=["Global", "Patch"], help="discriminator architecture")
-parser.add_argument("--loss", default="wloss", choices=["ls", "bce", "wloss"], help="loss function")
-parser.add_argument("--no_paired_dataset", default=False, action='store_true', help="whether the dataset is paired")
-parser.add_argument("--dataset_name", default="tactile", choices=["tactile", "aligned", "sketchy"], help="name of the dataset")
-parser.add_argument("--no_flip", default=False, action='store_true', help="if written, we will augment the dataset by flipping images")
-parser.add_argument("--no_jitter", default=False, action='store_true', help="if written, we will augment the dataset by varying color, brightness and contrast")
-parser.add_argument("--no_erase", default=False, action='store_true', help="if written, we will augment the dataset by randomly erasing a portion of input image")
-parser.add_argument("--folder_name", default="wgan_tactile_unet", help="where we want to save the model to")
+parser.add_argument("--loss", default="ls", choices=["ls", "bce", "wloss"], help="loss function")
+parser.add_argument("--no_aug", default=False, action='store_true', help="if written, we won't augment the dataset")
+parser.add_argument("--folder_save", default="pix2pix", help="where we want to save the model to")
+parser.add_argument("--folder_load", default="pix2pix", help="where we want to load the model from")
+parser.add_argument("--checkpint_interval", type=int, default=-1, help="interval between model checkpoints")
 parser.add_argument("--continue_training", default=False, action='store_true', help="if written, we will load the weights for the network brfore training")
-parser.add_argument("--lambda_per", type=float, default=0.1, help="perceptual lambda")
 
-args = parser.parse_args()
-
+opt = parser.parse_args()
 
 
-# In[ ]:
+photo_path_train = os.path.join(opt.dir,"data","train", "source")
+train_set = get_dataset(photo_path_train, opt, mode="train")
 
+experiment = Train_Pix2Pix(opt,train_set)
 
-class Args():
-    '''
-    We set model details as a class that we can pass around
-    '''
-    def __init__(self):
-        self.dir = args.dir
-        self.batch_size = args.batch_size
-        self.test_batch_size = args.test_batch_size
-        self.input_dim = args.input_dim
-        self.output_dim = args.output_dim
-        self.gen_filters = args.gen_filters
-        self.disc_filters = args.disc_filters
-        self.epoch_count = args.epoch_count
-        self.total_iters = args.total_iters
-        self.iter_constant = args.iter_constant
-        self.iter_decay = args.iter_decay
-        self.lr = args.lr
-        self.label_smoothing = not args.no_label_smoothing
-        self.beta1 = args.beta1
-        self.cuda = not args.no_cuda
-        self.threads = args.threads
-        self.lambda_A = args.lambda_A
-        self.lambda_GP = args.lambda_GP
-        self.lambda_per = args.lambda_per
-        self.norm = args.norm
-        self.gen = args.gen
-        self.disc= args.disc
-        self.loss = args.loss
-        self.paired_dataset = not args.no_paired_dataset
-        self.dataset_name = args.dataset_name
-        self.flip = not args.no_flip
-        self.jitter = not args.no_jitter
-        self.erase = not args.no_erase
-        self.folder_name = args.folder_name 
-        self.continue_training = args.continue_training
+checkpoint_path = os.path.join(opt.dir,"checkpoints",opt.folder_save)
+mkdir(checkpoint_path)
+save_path = os.path.join(opt.dir,"models",opt.folder_save)
+mkdir(save_path)
+model_path = os.path.join(save_path,"final_model.pth")
+experiment.train(opt)
 
-opt = Args()
-
-colored = opt.output_dim == 3
-photo_path_train = os.path.join(args.dir,"data",opt.dataset_name,"train", "photo")
-sketch_path_train = os.path.join(args.dir,"data",opt.dataset_name,"train", "sketch")
-train_set = get_dataset(photo_path_train,sketch_path_train, opt,flip=True,jitter=True,erase= False, colored_s=colored)
-
-photo_path_test = os.path.join(args.dir,"data",opt.dataset_name,"test", "photo")
-sketch_path_test = os.path.join(args.dir,"data",opt.dataset_name,"test", "sketch")
-testing_set =  get_dataset(photo_path_test,sketch_path_test, opt,flip=False,jitter=False,erase= False,colored_s=colored)
-
-
-# In[ ]:
-
-
-exps = [opt]
-for option in exps:
-    experiment = Train_Pix2Pix(option,train_set,testing_set)
-    experiment.train(option)
-    folderpath = os.path.join(args.dir,"models",option.folder_name)
-    model_path = os.path.join(folderpath,option.gen)
-    experiment.save_model(folderpath,model_path)
-    experiment.save_arrays(folderpath)
-    experiment.save_hyper_params(folderpath,opt)
-
+experiment.save_model(model_path)
+experiment.save_arrays(save_path)
+experiment.save_hyper_params(save_path,opt)

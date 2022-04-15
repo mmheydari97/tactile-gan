@@ -1,134 +1,77 @@
 import os
-from PIL import Image
-import torch.utils.data as data
+import numpy as np
+from PIL import Image, ImageOps
+from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 import torch
-import random
-import platform
-
-#from https://github.com/mtli/PhotoSketch/tree/master/data
-if platform.system() == 'Windows':
-    IMG_EXTENSIONS = [
-        '.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.svg',
-    ]
-else:
-    IMG_EXTENSIONS = [
-        '.jpg', '.JPG', '.jpeg', '.JPEG', '.svg', '.SVG',
-        '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',
-    ]
-    
-    
-def is_image_file(filename):
-    return any(filename.endswith(extension) for extension in IMG_EXTENSIONS)
+import cv2
+import albumentations
+import albumnations.augmentations as A
 
 
 
 class PairedDataset(data.Dataset):
-    def __init__(self, a_dir,b_dir,name="sketchy",size=256,flip=True,jitter=True,erase=True, colored_sketch=True): #image_dir should be unused for now
+    def __init__(self, img_dir, size=256, mode='train', aug=False):
         super(PairedDataset, self).__init__()
+        self.img_dir = img_dir
         self.size = size
-        self.a_dir = a_dir
-        self.b_dir = b_dir
-        self.name = name
-        self.flip = flip
-        self.jitter = jitter
-        self.erase = erase
-        self.colored_sketch = colored_sketch
-        
-#         path = os.path.abspath(os.getcwd())
-#         path = os.path.join(path,"train", "photo")
-        image_path = []
-        image_name = []
-        for root, fold , fnames in sorted(os.walk(self.a_dir)):
+        self.mode = mode
+        self.aug = aug        
+
+        images = []
+        for root, _ , fnames in sorted(os.walk(self.img_dir)):
              for fname in fnames:
-                if is_image_file(fname):
+                if self._is_image(fname):
                     path = os.path.join(root, fname)
-                    image_path.append(path)
-                    image_name.append(fname)
+                    images.append(path)
         
-        self.image_path = image_path
-        self.image_name = image_name
-    
-    def __getitem__(self, i):
-        if_flip = self.flip and random.random() < 0.5
-        
-        img = Image.open(self.image_path[i]).convert('RGB')
-        img = PairedDataset.expand2square(img)
-        
-        if if_flip:
-            img = img.transpose(Image.FLIP_LEFT_RIGHT)
-        if self.jitter:
-            jitter_amount = 0.02
-            img = transforms.ColorJitter(jitter_amount, jitter_amount, jitter_amount, jitter_amount)(img)
-        
-        if img.size != (self.size,self.size):
-            img = img.resize((self.size, self.size), Image.BICUBIC)
-        
+        self.images = images
 
-        img = transforms.ToTensor()(img)
-        img = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(img)
-        if self.erase:
-            img = transforms.RandomErasing(p=0.5, scale=(0.01, 0.08), ratio=(0.5, 2.0))(img)
-        
-
-        
-        sketch_path= self.image_path[i].replace("photo", "sketch").replace(".jpg","")
-        
-        sketches = []
-        j = 1
-        temppath = None
-        flag = False
-        while(True):
-            if self.name == "sketchy":
-                temppath = sketch_path + "-"+str(j)+".png"
-            elif self.name == "aligned":
-                temppath = sketch_path + "_0"+str(j)+".png"
-            elif self.name == "tactile":
-                temppath = sketch_path.replace("s_", "t_")+".jpg"
-                flag = True
-            if (not os.path.isfile(temppath)):
-                break
-            sketch = Image.open(temppath) # https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
-            sketch = PairedDataset.expand2square(sketch)
-            if not self.colored_sketch:
-                sketch = sketch.convert(mode="L")
-            if if_flip:
-                sketch = sketch.transpose(Image.FLIP_LEFT_RIGHT)
-            
-            if sketch.size != (self.size,self.size):
-                sketch = sketch.resize((self.size, self.size), Image.BICUBIC)
-                
-            sketch = transforms.ToTensor()(sketch)
-            sketch = transforms.Normalize((0.5,), (0.5,))(sketch)
-            sketches.append(sketch)
-            j +=1
-            if flag:
-                break
-        if len(sketches) > 5:
-            sketches = sketches[0:5]
-        if len(sketches) == 0:
-            print("somethings wrong", sketch_path,"~~~",self.image_path[i])
-        sketches = torch.cat(sketches, 0) #stack vs cat might be better
-        return img,sketches
-    
-    def __len__(self):
-        return len(self.image_path) 
-    
+        if aug:
+            self.aug_t = albumentations.Compose([
+                            A.transforms.HorizontalFlip(p=0.5),
+                            A.geometric.transforms.ShiftScaleRotate(shift_limit=0.1,
+                                                            scale_limit=0.2,
+                                                            rotate_limit=15,
+                                                            border_mode=cv.BORDER_CONSTANT,
+                                                            value=(255, 255, 255),
+                                                            mask_value=(255, 255, 255),
+                                                            p=0.5),])    
     @staticmethod
-    def expand2square(pil_img):
-        width, height = pil_img.size
-        if width == height:
-            return pil_img
-        elif width > height:
-            result = Image.new(pil_img.mode, (width, width), list(pil_img.getdata())[1])
-            result.paste(pil_img, (0, (width - height) // 2))
-            return result
+    def _is_image(filename):
+        img_extensions = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.bpm', '.svg', '.tiff']
+        return any(filename.lower().endswith(extension) for extension in img_extensions)
+
+    @staticmethod
+    def preprocess(img):
+        image_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5),(0.5, 0.5, 0.5), inplace=True)
+            ])
+        img = image_transform(img)
+        return img
+
+    def __getitem__(self, i):
+        source = Image.open(self.image_path[i]).convert('RGB')
+        tactile_path= self.image_path[i].replace("source", "tactile").replace("s_","t_").replace("png", "tiff")
+        tactile = Image.open(tactile_path).convert('RGB')
+        
+        if self.mode == 'train' and self.aug:
+            augmented = self.aug_t(image=np.array(source), mask=np.array(tactile))
+            aug_img_pil = Image.fromarray(augmented['image'])
+            img_tensor = self.preprocess(aug_img_pil)
+            aug_mask_pil = Image.fromarray(augmented['mask'])
+            mask_tensor = self.preprocess(aug_mask_pil)
         else:
-            result = Image.new(pil_img.mode, (height, height), list(pil_img.getdata())[1])
-            result.paste(pil_img, ((height - width) // 2, 0))
-            return result
+            img_tensor = self.preprocess(source)
+            mask_tensor = self.preprocess(tactile)
+        
+            # jitter_amount = 0.02
+            # img = transforms.ColorJitter(jitter_amount, jitter_amount, jitter_amount, jitter_amount)(img)
+            # erased = transforms.RandomErasing(p=0.5, scale=(0.01, 0.08), ratio=(0.5, 2.0), value=(255,255,255))(img=img, sketch=sketch)
 
 
+        return img_tensor, mask_tensor
 
-
-
+    def __len__(self):
+        return len(self.images)
