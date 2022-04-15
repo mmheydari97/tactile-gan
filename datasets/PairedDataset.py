@@ -6,11 +6,11 @@ import torchvision.transforms as transforms
 import torch
 import cv2
 import albumentations
-import albumnations.augmentations as A
+import albumentations.augmentations as A
 
 
 
-class PairedDataset(data.Dataset):
+class PairedDataset(Dataset):
     def __init__(self, img_dir, size=256, mode='train', aug=False):
         super(PairedDataset, self).__init__()
         self.img_dir = img_dir
@@ -33,7 +33,7 @@ class PairedDataset(data.Dataset):
                             A.geometric.transforms.ShiftScaleRotate(shift_limit=0.1,
                                                             scale_limit=0.2,
                                                             rotate_limit=15,
-                                                            border_mode=cv.BORDER_CONSTANT,
+                                                            border_mode=cv2.BORDER_CONSTANT,
                                                             value=(255, 255, 255),
                                                             mask_value=(255, 255, 255),
                                                             p=0.5),])    
@@ -52,8 +52,8 @@ class PairedDataset(data.Dataset):
         return img
 
     def __getitem__(self, i):
-        source = Image.open(self.image_path[i]).convert('RGB')
-        tactile_path= self.image_path[i].replace("source", "tactile").replace("s_","t_").replace("png", "tiff")
+        source = Image.open(self.images[i]).convert('RGB')
+        tactile_path= self.images[i].replace("source", "tactile").replace("s_","t_").replace("png", "tiff")
         tactile = Image.open(tactile_path).convert('RGB')
         
         if self.mode == 'train' and self.aug:

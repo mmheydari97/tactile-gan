@@ -16,7 +16,6 @@ from generators.generators import create_gen
 from discriminators.discriminators import create_disc
 from datasets.datasets import get_dataset
 from util import set_requires_grad,init_weights, mkdir, VGGPerceptualLoss
-from Tensorboard_Logger import Logger
 
 
 class Train_Pix2Pix:
@@ -27,18 +26,10 @@ class Train_Pix2Pix:
         
         #load in the datasets
         self.dataset = DataLoader(dataset=traindataset, batch_size=opt.batch_size, shuffle=True,num_workers=opt.threads)
-        self.atest, self.btest = next(iter(self.test_set))
-        self.dataviz = DataLoader(dataset=traindataset, batch_size=opt.batch_size, shuffle=False,num_workers=opt.threads)
-        self.atrain, self.btrain = next(iter(self.dataviz))
+  
 
         #tensorflow logger
         self.device = torch.device("cuda:0" if opt.cuda else "cpu")
-        self.writer = Logger(opt.folder_name)
-        self.writer.write_photo_to_tb(self.atest,"photos test")
-        self.writer.write_sketch_to_tb(self.btest,"sketches test")
-        self.writer.write_photo_to_tb(self.atrain,"photos train")
-        self.writer.write_sketch_to_tb(self.btrain,"sketches train")
-
 
         #create generator and discriminator
         self.netG = create_gen(opt.gen,opt.input_dim,opt.output_dim,opt.gen_filters,opt.norm)
@@ -78,7 +69,7 @@ class Train_Pix2Pix:
         self.per_loss = []
 
         if opt.continue_training:
-            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_load,opt.gen))
+            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_load,"final_model.pth"))
 
             self.netG.load_state_dict(checkpoint["gen"])
             self.optimizer_G.load_state_dict(checkpoint["optimizerG_state_dict"])
@@ -128,26 +119,21 @@ class Train_Pix2Pix:
                 fake_labels = torch.full(pred_fake.size(),self.fake_label_value).to(self.device)
                 
                 
-                if not(opt.loss == "wloss"):
+                if opt.loss != "wloss":
                     #Get the first half of the loss. Comparing fake predictions to labels of 0
                     loss_D_fake = self.criterion(pred_fake, fake_labels)
 
                 #Get the second half of the loss. Compare real predictions to labels of 1
                 #Here we have 5 real sketches per image, so we loop it 5 times.
-                n = real_B.shape[1]//opt.output_dim
-                loss_D_real_set = torch.empty(n, device=self.device)
-                for i in range(n):
-                    sel_B = real_B[:, i:i+opt.output_dim, :, :] #.unsqueeze(1)
         
-                    real_AB = torch.cat((real_A, sel_B), 1)
-                    pred_real = self.netD(real_AB)
-                    if not(opt.loss == "wloss"): 
-                        loss_D_real_set[i] = self.criterion(pred_real, real_labels)
-                    else: #if we're using Wassersetin loss
-                        loss_D_real_set[i] = self.criterion(real_AB,fake_AB, pred_fake, pred_real, opt.lambda_GP)        
-                loss_D_real = torch.mean(loss_D_real_set)
-                
+                real_AB = torch.cat((real_A, real_B), 1)
+                pred_real = self.netD(real_AB)
                 if not(opt.loss == "wloss"): 
+                    loss_D_real = self.criterion(pred_real, real_labels)
+                else: #if we're using Wassersetin loss
+                    loss_D_real = self.criterion(real_AB,fake_AB, pred_fake, pred_real, opt.lambda_GP)        
+                
+                if opt.loss != "wloss": 
                     loss_D = (loss_D_fake + loss_D_real) * 0.5 * opt.lambda_GP
                 else:
                     loss_D = loss_D_real
@@ -164,16 +150,17 @@ class Train_Pix2Pix:
 
                 fake_AB = torch.cat((real_A, fake_B), 1)
                 pred_fake = self.netD(fake_AB) #generate D predictions of fake images
-                if not(opt.loss == "wloss"):
+                if opt.loss != "wloss":
                     loss_G_GAN = self.criterion(pred_fake, real_labels) #We feed it real_labels as G is trying fool the discriminator
                 
                 loss_G_L1 = nn.L1Loss()(real_B,fake_B) #get per pixel L1 Loss
-                lossl1list.append( loss_G_L1.item())
+                lossl1list.append(loss_G_L1.item())
 
-                if not(opt.loss == "wloss"):
+                if opt.loss != "wloss":
                     loss_G = loss_G_GAN + loss_G_L1 * opt.lambda_A
                 else:
                     loss_G = pred_fake.mean()*-1 #the Generator Loss in WGAn is different
+                
                 if opt.lambda_per != 0:
                     per_loss = perceptual.forward(fake_B, real_A, [0,1])
                     loss_G += per_loss * opt.lambda_per
@@ -181,9 +168,6 @@ class Train_Pix2Pix:
                 else:
                     lossperlist.append(0)
                 
-                ###########################
-                # lossglist.append(loss_G.item())
-                ###########################
                 
                 lossglist.append(loss_G_GAN.item())
                 loss_G.backward()
@@ -207,19 +191,8 @@ class Train_Pix2Pix:
 
 
             if opt.checkpoint_interval != -1 and epoch % opt.checkpoint_interval == 0:                
-                with torch.no_grad():
-                    out1 = self.netG(self.atrain.to(self.device))
-                    title= "Epoch "+str(epoch) +"Training"
-                    self.writer.write_sketch_to_tb(out1.detach(),title) 
-            
-                    out2 = self.netG(self.atest.to(self.device))
-                    title= "Epoch "+str(epoch)
-                    self.writer.write_sketch_to_tb(out2.detach(),title)
-                torch.save(self.netG.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/{opt.gen}_{epoch}")
-                # torch.save(self.netD.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/{opt.disc}_{epoch}")            
+                self.save_model(f"{opt.dir}/checkpoints/{opt.folder_save}/temp_model_{epoch}.pth")            
 
-            
-        self.writer.plot_losses(self.gen_loss,self.disc_loss,self.l1_loss)
     
     @staticmethod
     def get_scheduler(optimizer):
@@ -275,7 +248,7 @@ class Train_Pix2Pix:
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dir", help="data directory")
-parser.add_argument("--batch_size", type=int, default=16, help="training batch size")
+parser.add_argument("--batch_size", type=int, default=1, help="training batch size")
 parser.add_argument("--test_batch_size", type=int, default=16, help="test batch size")
 parser.add_argument("--input_dim", type=int, default=3, help="input depth size")
 parser.add_argument("--output_dim", type=int, default=3, help="output depth size")
@@ -290,7 +263,7 @@ parser.add_argument("--beta1", type=float, default=0.01, help="beta1 for our Ada
 parser.add_argument("--cuda", default=True, action='store_false', help="if written, we will not use gpu accelerated training")
 parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
 parser.add_argument("--lambda_A", type=float, default=0.1, help="L1 lambda")
-parser.add_argument("--lambda_per", type=float, default=0.1, help="perceptual lambda")
+parser.add_argument("--lambda_per", type=float, default=0, help="perceptual lambda")
 parser.add_argument("--lambda_GP", type=float, default=10, help="Gradient_penalty loss")
 parser.add_argument("--norm", default="instance", help="normalization mode")
 parser.add_argument("--gen", default="UNet++", choices=["Resnet", "UNet++", "UNet", "UNet-no-skips", "BCDUNet"], help="generator architecture")
@@ -299,7 +272,7 @@ parser.add_argument("--loss", default="ls", choices=["ls", "bce", "wloss"], help
 parser.add_argument("--no_aug", default=False, action='store_true', help="if written, we won't augment the dataset")
 parser.add_argument("--folder_save", default="pix2pix", help="where we want to save the model to")
 parser.add_argument("--folder_load", default="pix2pix", help="where we want to load the model from")
-parser.add_argument("--checkpint_interval", type=int, default=-1, help="interval between model checkpoints")
+parser.add_argument("--checkpoint_interval", type=int, default=-1, help="interval between model checkpoints")
 parser.add_argument("--continue_training", default=False, action='store_true', help="if written, we will load the weights for the network brfore training")
 
 opt = parser.parse_args()
@@ -320,3 +293,4 @@ experiment.train(opt)
 experiment.save_model(model_path)
 experiment.save_arrays(save_path)
 experiment.save_hyper_params(save_path,opt)
+
