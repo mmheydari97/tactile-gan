@@ -30,8 +30,8 @@ def load_model(model_path,opt,device):
     G.load_state_dict(checkpoint["gen"], strict=False)
     return G
 
-def load_data(photo_path,sketch_path,opt):
-    data = get_dataset(photo_path,sketch_path, opt,flip=False,jitter=False,erase= False,colored_s=True)
+def load_data(photo_path,opt):
+    data = get_dataset(photo_path, opt, mode='test')
     dataset = DataLoader(dataset=data, batch_size=1, shuffle=False,num_workers=4)
     return dataset
 
@@ -46,15 +46,16 @@ def save_images(dataset,path):
     for i, batch in enumerate(dataset):
         real_A, real_B = batch[0], batch[1]
         with torch.no_grad():
-            out = Gen(real_A.to(device))[0].cpu().numpy()
+            out = Gen(real_A.to(device))[0].cpu()
             
         a = unnormalize(real_A[0]).numpy()
         b = unnormalize(real_B[0]).numpy()
+        out = unnormalize(out).numpy()
         
         
-        file_name = str(i) +".png"
+        file_name = str(i+1) +".png"
         plt.imsave(os.path.join(path,file_name),concat_images(a,b,out))
-
+        print(f"file saved at: {os.path.join(path,file_name)}")
 
 opt_path = os.path.join(os.getcwd(),"models","pix2pix","params.txt")
 opt = load_opt(opt_path)
