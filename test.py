@@ -1,6 +1,5 @@
 import os
 import json
-from sys import platlibdir
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -17,20 +16,19 @@ class Opt:
         for k, v in dictionary.items():
              setattr(self, k, v)
 
-def load_opt(folder_name):
-    path = os.path.join(os.getcwd(),"models",folder_name,"params.txt")
+def load_opt(path):
     with open(path) as json_file:
         opt = json.load(json_file)
     
     opt = Opt(opt)
     return opt
 
-def load_model(folder_name,model_name, opt,device):
-    G = create_gen(model_name,opt.input_dim,opt.output_dim,multigpu=False)
+def load_model(model_path, opt,device):
+    G = create_gen(opt.gen,opt.input_dim,opt.output_dim,multigpu=False)
     G.to(device)
     
-    checkpoint = torch.load(os.path.join(os.getcwd(),"models",folder_name,model_name))
-    G.load_state_dict(checkpoint["gen"], strict=False) #for cyclegan replace 'gen' with 'genAB'
+    checkpoint = torch.load(model_path)
+    G.load_state_dict(checkpoint["gen"], strict=False)
     return G
 
 def load_data(photo_path,opt):
@@ -56,7 +54,7 @@ def save_images(dataset,path, reduce_channels=True):
     for i, batch in enumerate(dataset):
         real_A, real_B = batch[0], batch[1]
         with torch.no_grad():
-            out = Gen(real_A.to(device))[0].cpu()
+            out = Gen(real_A.to(device))[0].cpu().numpy()
         a = unnormalize(real_A[0]).numpy()
         b = unnormalize(real_B[0]).numpy()
         
@@ -67,19 +65,21 @@ def save_images(dataset,path, reduce_channels=True):
             b = visualize_mask(b)
             out = visualize_mask(out)
         
-        file_name = str(i) +".png"
+        file_name = str(i+1) +".png"
         plt.imsave(os.path.join(path,file_name),concat_images(a,b,out)) 
         print(f"file saved at: {os.path.join(path,file_name)}")
 
-folder= "pix2seg"
-opt = load_opt(folder)
+opt_path = os.path.join(os.getcwd(),"models","pix2seg","params.txt")
+opt = load_opt(opt_path)
 device = torch.device("cuda:0")
-Gen = load_model(folder,opt.gen,opt,device)
 
-photo_path_train = os.path.join(os.getcwd(),"data","test","source")
-dataset = load_data(photo_path_train,opt)
+model_path = os.path.join(os.getcwd(),"models",opt.folder_load,"final_model.pth")
+Gen = load_model(model_path,opt,device)
 
-path = os.path.join(os.getcwd(),"Outputs",folder)
-mkdir(path)
-save_images(dataset,path)
+photo_path_test= os.path.join(os.getcwd(),"data","test","source")
+dataset = load_data(photo_path_test,opt)
+
+output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_load)
+mkdir(output_path)
+save_images(dataset,output_path)
 

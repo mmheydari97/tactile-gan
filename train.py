@@ -1,4 +1,3 @@
-from telnetlib import GA
 import torch
 import torch.nn as nn
 
@@ -65,7 +64,7 @@ class Train_Pix2Pix:
         self.per_loss = []
 
         if opt.continue_training:
-            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_name,opt.gen))
+            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_load,opt.gen))
 
             self.netG.load_state_dict(checkpoint["gen"])
             self.optimizer_G.load_state_dict(checkpoint["optimizerG_state_dict"])
@@ -82,8 +81,8 @@ class Train_Pix2Pix:
         if opt.lambda_per != 0:
             perceptual = VGGPerceptualLoss(resize=True)
 
-        for epoch in range(opt.epoch_count, opt.total_iters):
-
+        for i in range(opt.total_iters):
+            epoch = i + opt.epoch_count
             #monitor each minibatch loss
             lossdlist = []
             lossglist = []
@@ -92,9 +91,9 @@ class Train_Pix2Pix:
             
             t1 = time.time()
             
-            for i, batch in enumerate(self.dataset):
-                if i % 100 == 0:
-                    print("training epoch ",epoch,"batch", i,"/",len(self.dataset))
+            for j, batch in enumerate(self.dataset):
+                if j % 100 == 0:
+                    print("training epoch ",epoch,"batch", j,"/",len(self.dataset))
                 real_A, real_B = batch[0].to(self.device), batch[1].to(self.device) #load in a batch of data
 
                 # (generate fake images)
@@ -166,10 +165,9 @@ class Train_Pix2Pix:
             self.disc_loss.append(mean(lossdlist))
             self.l1_loss.append(mean(lossl1list))
             self.per_loss.append(mean(lossperlist))
-            if opt.checkpoint_interval != -1 and (epoch+1)%opt.checkpoint_interval == 0:
-                torch.save(self.netG.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/gen_{epoch}")
-                # torch.save(self.netD.state_dict(), f"{opt.dir}/checkpoints/{opt.folder_save}/disc_{epoch}")
-                print("one checkpoint saved")
+            if opt.checkpoint_interval != -1 and epoch%opt.checkpoint_interval == 0:
+                self.save_model(f"{opt.dir}/checkpoints/{opt.folder_save}/model_{epoch}")
+
 
     @staticmethod
     def get_scheduler(optimizer):
@@ -178,11 +176,10 @@ class Train_Pix2Pix:
         scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=list(milestone), gamma=0.8)
         return scheduler
                 
-    def save_model(self,folderpath,modelpath):
+    def save_model(self,modelpath):
         '''
         Saves the models as well as the optimizers
         '''
-        mkdir(folderpath)
         torch.save({
             'gen': self.netG.state_dict(),
             'disc': self.netD.state_dict(),
@@ -212,7 +209,7 @@ parser.add_argument("--dir", help="data directory")
 parser.add_argument("--batch_size", type=int, default=1, help="training batch size")
 parser.add_argument("--input_dim", type=int, default=3, help="input depth size")
 parser.add_argument("--output_dim", type=int, default=4, help="output depth size")
-parser.add_argument("--epoch_count", type=int, default=0, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
+parser.add_argument("--epoch_count", type=int, default=1, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
 parser.add_argument("--total_iters", type=int, help="total epochs we're training for")
 parser.add_argument("--iter_constant", type=int, default=200, help="how many epochs we keep the learning rate constant")
 parser.add_argument("--lr", type=float, default=0.002, help="learning rate")
@@ -238,14 +235,14 @@ train_set = get_dataset(photo_path_train, opt, mode='train')
 
 experiment = Train_Pix2Pix(opt,train_set)
 
-checkpoint_path = os.path.join(f"{opt.dir}","checkpoints", f"{opt.folder_save}/")
+checkpoint_path = os.path.join(opt.dir,"checkpoints",opt.folder_save)
 mkdir(checkpoint_path)
-folderpath = os.path.join(opt.dir,"models",opt.folder_save)
-model_path = os.path.join(folderpath,opt.gen)
+save_path = os.path.join(opt.dir,"models",opt.folder_save)
+mkdir(save_path)
+model_path = os.path.join(save_path,"final_model.pth")
 experiment.train(opt)
 
-experiment.save_model(folderpath,model_path)
-experiment.save_arrays(folderpath)
-experiment.save_hyper_params(folderpath,opt)
-
+experiment.save_model(model_path)
+experiment.save_arrays(save_path)
+experiment.save_hyper_params(save_path,opt)
 
