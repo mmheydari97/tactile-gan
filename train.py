@@ -166,7 +166,7 @@ class Train_Pix2Pix:
             self.l1_loss.append(mean(lossl1list))
             self.per_loss.append(mean(lossperlist))
             if opt.checkpoint_interval != -1 and epoch%opt.checkpoint_interval == 0:
-                self.save_model(f"{opt.dir}/checkpoints/{opt.folder_save}/model_{epoch}")
+                self.save_model(f"{opt.dir}/checkpoints/{opt.folder_save}/model_{epoch}.pth")
 
 
     @staticmethod
