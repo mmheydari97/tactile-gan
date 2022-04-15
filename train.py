@@ -64,7 +64,7 @@ class Train_Pix2Pix:
         self.per_loss = []
 
         if opt.continue_training:
-            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_load,opt.gen))
+            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_load,"final_model.pth"))
 
             self.netG.load_state_dict(checkpoint["gen"])
             self.optimizer_G.load_state_dict(checkpoint["optimizerG_state_dict"])
