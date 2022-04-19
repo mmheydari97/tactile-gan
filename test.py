@@ -31,6 +31,7 @@ def load_model(model_path, opt,device):
     G.load_state_dict(checkpoint["gen"], strict=False)
     return G
 
+
 def load_data(photo_path,opt):
     data = get_dataset(photo_path, opt, mode='test')
     dataset = DataLoader(dataset=data, batch_size=1, shuffle=False,num_workers=4)
@@ -40,22 +41,23 @@ def unnormalize(a):
     return a/2 +0.5
 
 def visualize_mask(img):
+    size = img.shape
     palette = {0:[1.,1.,1.], 1:[0,0,0], 2:[0.3,0.3,0.3], 3:[0.1,0.5,0.7]}
-    res = np.zeros((3,256,256), np.float16)
+    res = np.zeros((3,*size), np.float16)
     for k, v in palette.items():
         res[:, img == k] = np.array(v).reshape(-1,1)
-    return res
+    return torch.from_numpy(res)
 
 
 def concat_images(photo,sketch,output):
-    return np.swapaxes(np.concatenate((photo,sketch,output),1), 0, 2)
+    return torch.cat((photo,sketch,output),2)
 
 def save_images(dataset,path, reduce_channels=True):
     for i, batch in enumerate(dataset):
         real_A, real_B = batch[0], batch[1]
         with torch.no_grad():
             out = Gen(real_A.to(device))[0].cpu().numpy()
-        a = unnormalize(real_A[0]).numpy()
+        a = unnormalize(real_A[0])
         b = unnormalize(real_B[0]).numpy()
         
         if reduce_channels:
@@ -66,7 +68,7 @@ def save_images(dataset,path, reduce_channels=True):
             out = visualize_mask(out)
         
         file_name = str(i+1) +".png"
-        plt.imsave(os.path.join(path,file_name),concat_images(a,b,out)) 
+        save_image(concat_images(a,b,out), os.path.join(path,file_name)) 
         print(f"file saved at: {os.path.join(path,file_name)}")
 
 opt_path = os.path.join(os.getcwd(),"models","pix2seg","params.txt")
