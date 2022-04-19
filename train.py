@@ -1,3 +1,4 @@
+import re
 import torch
 import torch.nn as nn
 
@@ -129,10 +130,10 @@ class Train_Pix2Pix:
                 self.optimizer_D.step()
 
                 d_regularize = epoch % opt.d_reg_every == 0
-                if True:
+                if d_regularize:
                     self.optimizer_D.zero_grad()
                     gp_loss = self.gradient_penalty(real_A, real_B, fake_B, lambda_gp=opt.lambda_gp)
-                    gp_loss.backward()
+                    gp_loss.backward(retain_graph=True)
                     self.optimizer_D.step()
                     gp_dloss_list.append(gp_loss.item())
                 else:
@@ -196,15 +197,21 @@ class Train_Pix2Pix:
             elif type == 'fake':
                 interpolates = fake_mask
             elif type == 'mixed':
-                alpha = (torch.rand(real_img.size(0), 1, device=self.device)+1)/2
+                alpha = (torch.rand(real_mask.size(0), 1, device=self.device)+1)/2
                 alpha = alpha.expand(real_mask.shape[0], real_mask.nelement() // real_mask.shape[0]).contiguous().view(*real_mask.shape)
                 interpolates = alpha * real_mask + ((1 - alpha) * fake_mask)
             else:
                 raise NotImplementedError(f'{type} not implemented')
             interpolates.requires_grad_(True)
             pred = self.netD(real_img, interpolates)
-            gradients = torch.autograd.grad(outputs=pred, inputs=interpolates)[0].view(real_mask.size(0), -1)
-            return (((gradients+1e-16).norm(2, dim=1) - constant) ** 2).mean() * lambda_gp
+            gradients = torch.autograd.grad(outputs=pred, inputs=interpolates,
+                                            grad_outputs=torch.ones(pred.size()).to(self.device),
+                                            create_graph=True,
+                                            retain_graph=True,
+                                            only_inputs=True)
+            gradients = gradients[0].view(real_mask.size(0),-1)                
+            res = (((gradients+1e-16).norm(2, dim=1) - constant) ** 2).mean() * lambda_gp
+            return res
         else:
             return 0.0
 
@@ -244,14 +251,14 @@ parser.add_argument("--input_dim", type=int, default=3, help="input depth size")
 parser.add_argument("--output_dim", type=int, default=4, help="output depth size")
 parser.add_argument("--epoch_count", type=int, default=1, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
 parser.add_argument("--total_iters", type=int, help="total epochs we're training for")
-parser.add_argument("--iter_constant", type=int, default=200, help="how many epochs we keep the learning rate constant")
+parser.add_argument("--iter_constant", type=int, default=20, help="how many epochs we keep the learning rate constant")
 parser.add_argument("--lr", type=float, default=0.002, help="learning rate")
 parser.add_argument("--label_smoothing", default=False, action='store_true', help="if written, we will not use one sided label smoothing")
 parser.add_argument("--beta1", type=float, default=0.01, help="beta1 for our Adam optimizer")
 parser.add_argument("--cuda", default=True, action='store_false', help="if written, we will not use gpu accelerated training")
 parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
-parser.add_argument("--lambda_a", type=float, default=10, help="L1 lambda")
-parser.add_argument('--lambda_gp', type=float, default=10, help="gradient penalty lambda")
+parser.add_argument("--lambda_a", type=float, default=5, help="L1 lambda")
+parser.add_argument('--lambda_gp', type=float, default=5, help="gradient penalty lambda")
 parser.add_argument("--lambda_per", type=float, default=0.0, help="perceptual lambda")
 parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet"], help="generator architecture")
 parser.add_argument("--disc", default="Patch", choices=["Global", "Patch"], help="discriminator architecture")
@@ -260,7 +267,7 @@ parser.add_argument("--folder_save", default="pix2seg", help="where we want to s
 parser.add_argument("--folder_load", default="pix2seg", help="where we want to load the model from")
 parser.add_argument("--checkpoint_interval", type=int, default=-1, help="interval between model checkpoints")
 parser.add_argument("--continue_training", default=False, action='store_true', help="if written, we will load the weights for the network brfore training")
-parser.add_argument('--d_reg_every', type=int, default=10, help='set how frequently we regularize the discriminator')
+parser.add_argument('--d_reg_every', type=int, default=5, help='set how frequently we regularize the discriminator')
 
 opt = parser.parse_args()
 
