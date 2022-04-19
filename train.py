@@ -42,7 +42,7 @@ class Train_Pix2Pix:
         init_weights(self.netD)
 
      
-        self.gan_loss = GANLoss(gan_mode='hinge', tensor=torch.cuda.FloatTensor)
+        self.gan_loss = GANLoss(gan_mode='original', tensor=torch.cuda.FloatTensor)
           
         self.real_label_value = 1.0
         self.fake_label_value = 0.0
@@ -88,6 +88,7 @@ class Train_Pix2Pix:
             lossglist = []
             lossl1list = []
             lossperlist = []
+            gp_dloss_list = []
             
             t1 = time.time()
             
@@ -127,6 +128,17 @@ class Train_Pix2Pix:
                 loss_D.backward()
                 self.optimizer_D.step()
 
+                d_regularize = epoch % opt.d_reg_every == 0
+                if True:
+                    self.optimizer_D.zero_grad()
+                    gp_loss = self.gradient_penalty(real_A, real_B, fake_B, lambda_gp=opt.lambda_gp)
+                    gp_loss.backward()
+                    self.optimizer_D.step()
+                    gp_dloss_list.append(gp_loss.item())
+                else:
+                    gp_dloss_list.append(0)
+
+
                 # Optimize G #####################################
                 set_requires_grad(nets=self.netD, requires_grad=False) #dont want the discriminator to update weights this round
                 self.optimizer_G.zero_grad()
@@ -138,7 +150,7 @@ class Train_Pix2Pix:
                 loss_G_L1 = nn.L1Loss()(real_B,fake_B) #get per pixel L1 Loss
                 lossl1list.append(loss_G_L1.item())
 
-                loss_G = loss_G_GAN + loss_G_L1 * opt.lambda_A
+                loss_G = loss_G_GAN + loss_G_L1 * opt.lambda_a
                 if opt.lambda_per != 0:
                     per_loss = perceptual.forward(fake_B, real_A, [0,1])
                     loss_G += per_loss * opt.lambda_per
@@ -150,6 +162,7 @@ class Train_Pix2Pix:
                 loss_G.backward()
                 self.optimizer_G.step()
 
+
             #update_learning_rate()
             for scheduler in self.schedulers:
                 scheduler.step()
@@ -157,7 +170,7 @@ class Train_Pix2Pix:
             print('learning rate = %.7f' % lr)
             t2 = time.time()
             diff = t2-t1
-            print("iteration:",epoch,"loss D:", mean(lossdlist),"loss G:", mean(lossglist), "loss L1:", mean(lossl1list), "loss per:", mean(lossperlist))
+            print("iteration:",epoch,"loss D:", mean(lossdlist),"loss G:", mean(lossglist), "loss L1:", mean(lossl1list), "loss gp:", mean(gp_dloss_list))
             print("Took ", diff, "seconds")
             print("Estimated time left:", diff*(opt.total_iters - epoch))
 
@@ -175,6 +188,26 @@ class Train_Pix2Pix:
         milestone = np.int16(np.linspace(opt.iter_constant, opt.total_iters, 11)[:-1])
         scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=list(milestone), gamma=0.8)
         return scheduler
+    
+    def gradient_penalty(self, real_img, real_mask, fake_mask, type='mixed', constant=1.0, lambda_gp=10.0):
+        if lambda_gp > 0.0:
+            if type == 'real':
+                interpolates = real_mask
+            elif type == 'fake':
+                interpolates = fake_mask
+            elif type == 'mixed':
+                alpha = (torch.rand(real_img.size(0), 1, device=self.device)+1)/2
+                alpha = alpha.expand(real_mask.shape[0], real_mask.nelement() // real_mask.shape[0]).contiguous().view(*real_mask.shape)
+                interpolates = alpha * real_mask + ((1 - alpha) * fake_mask)
+            else:
+                raise NotImplementedError(f'{type} not implemented')
+            interpolates.requires_grad_(True)
+            pred = self.netD(real_img, interpolates)
+            gradients = torch.autograd.grad(outputs=pred, inputs=interpolates)[0].view(real_mask.size(0), -1)
+            return (((gradients+1e-16).norm(2, dim=1) - constant) ** 2).mean() * lambda_gp
+        else:
+            return 0.0
+
                 
     def save_model(self,modelpath):
         '''
@@ -217,7 +250,8 @@ parser.add_argument("--label_smoothing", default=False, action='store_true', hel
 parser.add_argument("--beta1", type=float, default=0.01, help="beta1 for our Adam optimizer")
 parser.add_argument("--cuda", default=True, action='store_false', help="if written, we will not use gpu accelerated training")
 parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
-parser.add_argument("--lambda_A", type=float, default=5, help="L1 lambda")
+parser.add_argument("--lambda_a", type=float, default=10, help="L1 lambda")
+parser.add_argument('--lambda_gp', type=float, default=10, help="gradient penalty lambda")
 parser.add_argument("--lambda_per", type=float, default=0.0, help="perceptual lambda")
 parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet"], help="generator architecture")
 parser.add_argument("--disc", default="Patch", choices=["Global", "Patch"], help="discriminator architecture")
@@ -226,6 +260,7 @@ parser.add_argument("--folder_save", default="pix2seg", help="where we want to s
 parser.add_argument("--folder_load", default="pix2seg", help="where we want to load the model from")
 parser.add_argument("--checkpoint_interval", type=int, default=-1, help="interval between model checkpoints")
 parser.add_argument("--continue_training", default=False, action='store_true', help="if written, we will load the weights for the network brfore training")
+parser.add_argument('--d_reg_every', type=int, default=10, help='set how frequently we regularize the discriminator')
 
 opt = parser.parse_args()
 
