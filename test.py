@@ -40,7 +40,8 @@ def unnormalize(a):
 
 
 def concat_images(photo,sketch,output):
-    return np.swapaxes(np.concatenate((photo,sketch,output),1),0,2)
+
+    return torch.cat((photo,sketch,output),2)
 
 def save_images(dataset,path):
     for i, batch in enumerate(dataset):
@@ -48,13 +49,13 @@ def save_images(dataset,path):
         with torch.no_grad():
             out = Gen(real_A.to(device))[0].cpu()
             
-        a = unnormalize(real_A[0]).numpy()
-        b = unnormalize(real_B[0]).numpy()
-        out = unnormalize(out).numpy()
+        a = unnormalize(real_A[0])
+        b = unnormalize(real_B[0])
+        out = unnormalize(out)
         
         
         file_name = str(i+1) +".png"
-        plt.imsave(os.path.join(path,file_name),concat_images(a,b,out))
+        save_image(concat_images(a,b,out), os.path.join(path,file_name))
         print(f"file saved at: {os.path.join(path,file_name)}")
 
 opt_path = os.path.join(os.getcwd(),"models","pix2pix","params.txt")
