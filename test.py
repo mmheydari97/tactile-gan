@@ -42,7 +42,7 @@ def unnormalize(a):
 
 def visualize_mask(img):
     size = img.shape
-    palette = {0:[1.,1.,1.], 1:[0,0,0], 2:[0.3,0.3,0.3], 3:[0.1,0.5,0.7]}
+    palette = {0:[1.,1.,1.], 1:[0,0,0], 2:[0.9,0.1,0.1], 3:[0.1,0.2,0.8]}
     res = np.zeros((3,*size), np.float16)
     for k, v in palette.items():
         res[:, img == k] = np.array(v).reshape(-1,1)
@@ -56,9 +56,12 @@ def save_images(dataset,path, reduce_channels=True):
     for i, batch in enumerate(dataset):
         real_A, real_B = batch[0], batch[1]
         with torch.no_grad():
-            out = Gen(real_A.to(device))[0].cpu().numpy()
+            out = Gen(real_A.to(device)).cpu()
+
         a = unnormalize(real_A[0])
         b = unnormalize(real_B[0]).numpy()
+        out = unnormalize(out[0]).numpy()
+        
         
         if reduce_channels:
             b = np.argmax(b, axis=0)
