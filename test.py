@@ -42,7 +42,7 @@ def unnormalize(a):
 
 def visualize_mask(img):
     size = img.shape
-    palette = {0:[1.,1.,1.], 1:[0,0,0], 2:[0.9,0.1,0.1], 3:[0.1,0.2,0.8]}
+    palette = {0:[1.,1.,1.], 1:[0,0,0], 2:[0.1,0.1,0.9], 3:[0.9,0.1,0.1]}
     res = np.zeros((3,*size), np.float16)
     for k, v in palette.items():
         res[:, img == k] = np.array(v).reshape(-1,1)
