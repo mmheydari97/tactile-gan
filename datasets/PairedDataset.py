@@ -63,24 +63,21 @@ class PairedDataset(Dataset):
         tactile_axes = np.array(Image.open(f"{tactile_path[0]}_axes.{tactile_path[1]}").convert(mode="L"))
         tactile_grid = np.array(Image.open(f"{tactile_path[0]}_grids.{tactile_path[1]}").convert(mode="L"))
         tactile_content = np.array(Image.open(f"{tactile_path[0]}_content.{tactile_path[1]}").convert(mode="L"))
-        tactile = np.concatenate((tactile_axes, tactile_grid, tactile_content), axis=2)
-        print(tactile.shape)
+        tactile = np.concatenate([np.expand_dims(tactile_axes,2), np.expand_dims(tactile_grid,2), np.expand_dims(tactile_content,2)], 2)
 
 
         if self.mode=='train' and self.aug:
             augmented = self.aug_t(image=np.array(source), mask=tactile)
             aug_img_pil = Image.fromarray(augmented['image'])
+            aug_msk_pil = Image.fromarray(augmented['mask'])
             # apply pixel-wise transformation
             img_tensor = self.preprocess(aug_img_pil)
-            mask_np = np.array(augmented['mask'])
+            mask_tensor = self.preprocess(aug_msk_pil)
 
         else:
             img_tensor = self.preprocess(source)
-            mask_np = tactile
+            mask_tensor = self.preprocess(tactile)
 
-        labels = self._mask_labels(mask_np)
-        mask_tensor = torch.tensor(labels, dtype=torch.float)
-        mask_tensor = (mask_tensor - 0.5) / 0.5
         return img_tensor, mask_tensor
         
     def __len__(self):
