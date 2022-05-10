@@ -36,24 +36,13 @@ class PairedDataset(Dataset):
                                                           rotate_limit=15,
                                                           border_mode=cv2.BORDER_CONSTANT,
                                                           value=(255,255,255),
-                                                          mask_value=0,
+                                                          mask_value=(0,0,0),
                                                           p=0.5),])
 
     @staticmethod
     def _is_image(filename):
         img_extensions = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.svg', '.tiff']
         return any(filename.lower().endswith(extension) for extension in img_extensions)
-
-    @staticmethod
-    def _mask_labels(label_array):
-        labels = sorted(np.unique(label_array))
-        shape = label_array.shape
-        # assert max(labels) == 3, f"unexpected value for context channel: {max(labels)}" 
-        one_hot = np.zeros((4, *shape))
-        
-        for l in labels:
-            one_hot[l][label_array==l] = 1.0 
-        return one_hot
 
 
     @staticmethod
@@ -69,11 +58,17 @@ class PairedDataset(Dataset):
     def __getitem__(self, i):
         
         source = Image.open(self.images[i]).convert('RGB')
-        tactile_path = self.images[i].replace("source", "tactile").replace("s_", "t_").replace(".png",".tiff")
-        tactile = Image.open(tactile_path).convert(mode="L") 
-         
+        tactile_path = self.images[i].replace("source", "tactile").replace("s_", "t_").replace(".png",".tiff").rsplit(".",1)
+
+        tactile_axes = np.array(Image.open(f"{tactile_path[0]}_axes.{tactile_path[1]}").convert(mode="L"))
+        tactile_grid = np.array(Image.open(f"{tactile_path[0]}_grids.{tactile_path[1]}").convert(mode="L"))
+        tactile_content = np.array(Image.open(f"{tactile_path[0]}_content.{tactile_path[1]}").convert(mode="L"))
+        tactile = np.concatenate((tactile_axes, tactile_grid, tactile_content), axis=2)
+        print(tactile.shape)
+
+
         if self.mode=='train' and self.aug:
-            augmented = self.aug_t(image=np.array(source), mask=np.array(tactile))
+            augmented = self.aug_t(image=np.array(source), mask=tactile)
             aug_img_pil = Image.fromarray(augmented['image'])
             # apply pixel-wise transformation
             img_tensor = self.preprocess(aug_img_pil)
@@ -81,7 +76,7 @@ class PairedDataset(Dataset):
 
         else:
             img_tensor = self.preprocess(source)
-            mask_np = np.array(tactile)
+            mask_np = tactile
 
         labels = self._mask_labels(mask_np)
         mask_tensor = torch.tensor(labels, dtype=torch.float)

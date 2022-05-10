@@ -43,7 +43,7 @@ class Train_Pix2Pix:
         init_weights(self.netD)
 
      
-        self.gan_loss = GANLoss(gan_mode='original', tensor=torch.cuda.FloatTensor)
+        self.gan_loss = GANLoss(gan_mode='ls', tensor=torch.cuda.FloatTensor)
           
         self.real_label_value = 1.0
         self.fake_label_value = 0.0
@@ -215,7 +215,7 @@ class Train_Pix2Pix:
         else:
             return 0.0
 
-                
+
     def save_model(self,modelpath):
         '''
         Saves the models as well as the optimizers
@@ -248,7 +248,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--dir", help="data directory")
 parser.add_argument("--batch_size", type=int, default=1, help="training batch size")
 parser.add_argument("--input_dim", type=int, default=3, help="input depth size")
-parser.add_argument("--output_dim", type=int, default=4, help="output depth size")
+parser.add_argument("--output_dim", type=int, default=3, help="output depth size")
 parser.add_argument("--epoch_count", type=int, default=1, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
 parser.add_argument("--total_iters", type=int, help="total epochs we're training for")
 parser.add_argument("--iter_constant", type=int, default=25, help="how many epochs we keep the learning rate constant")
@@ -287,4 +287,3 @@ experiment.train(opt)
 experiment.save_model(model_path)
 experiment.save_arrays(save_path)
 experiment.save_hyper_params(save_path,opt)
-
