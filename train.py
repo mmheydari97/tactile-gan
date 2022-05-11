@@ -129,7 +129,7 @@ class Train_Pix2Pix:
                 loss_D.backward()
                 self.optimizer_D.step()
 
-                d_regularize = epoch % opt.d_reg_every == 0
+                d_regularize = (opt.d_reg_every!=0) and (epoch % opt.d_reg_every == 0)
                 if d_regularize:
                     self.optimizer_D.zero_grad()
                     gp_loss = self.gradient_penalty(real_A, real_B, fake_B, lambda_gp=opt.lambda_gp)
