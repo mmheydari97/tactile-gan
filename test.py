@@ -1,11 +1,14 @@
+from operator import concat
 import os
 import json
 import numpy as np
-import matplotlib.pyplot as plt
+from PIL import Image
+from PIL.ImageOps import invert
 import torch
 
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
+from torchvision.transforms import ToTensor, ToPILImage
 from generators.generators import create_gen
 from datasets.datasets import get_dataset
 from util import mkdir
@@ -40,39 +43,46 @@ def load_data(photo_path,opt):
 def unnormalize(a):
     return a/2 +0.5
 
-def visualize_mask(img):
-    size = img.shape
-    palette = {0:[1.,1.,1.], 1:[0,0,0], 2:[0.1,0.1,0.9], 3:[0.9,0.1,0.1]}
-    res = np.zeros((3,*size), np.float16)
-    for k, v in palette.items():
-        res[:, img == k] = np.array(v).reshape(-1,1)
-    return torch.from_numpy(res)
+def visualize(out):
+    ax = invert(ToPILImage()(out[0])).convert("RGB")
+    grid_msk = ToPILImage()(out[1])
+    content_msk = ToPILImage()(out[2])
+
+    content = np.expand_dims(np.array(content_msk), axis=2)
+    grid = np.expand_dims(np.array(grid_msk), axis=2)
+
+    blk = np.zeros((256,256,2), dtype=np.uint8)
+    content = np.concatenate((content, blk), axis=2)
+    grid = np.concatenate((blk, grid), axis=2)
+    content = Image.fromarray(content)
+    grid = Image.fromarray(grid)
+    
+    ax.paste(grid, (0,0), grid_msk)
+    ax.paste(content, (0,0), content_msk)
+    return ToTensor()(ax)
 
 
 def concat_images(photo,sketch,output):
     return torch.cat((photo,sketch,output),2)
 
-def save_images(dataset,path, reduce_channels=True):
+def save_images(dataset,path):
     for i, batch in enumerate(dataset):
         real_A, real_B = batch[0], batch[1]
         with torch.no_grad():
             out = Gen(real_A.to(device)).cpu()
 
         a = unnormalize(real_A[0])
-        b = unnormalize(real_B[0]).numpy()
-        out = unnormalize(out[0]).numpy()
-        
-        
-        if reduce_channels:
-            b = np.argmax(b, axis=0)
-            out = np.argmax(out, axis=0)
+        b = unnormalize(real_B[0])
+        out = unnormalize(out[0])
 
-            b = visualize_mask(b)
-            out = visualize_mask(out)
+        b_img = visualize(b)
+        out_img = visualize(out)
+        save_image(concat_images(a, b_img, out_img), os.path.join(path,f"{i+1}.png")) 
+        b_elements = concat_images(torch.unsqueeze(b[0],0), torch.unsqueeze(b[1],0), torch.unsqueeze(b[2],0))
+        out_elements = concat_images(torch.unsqueeze(out[0],0), torch.unsqueeze(out[1],0), torch.unsqueeze(out[2],0))
+        save_image(torch.cat((b_elements, out_elements), 1), os.path.join(path,f"{i+1}_elements.png")) 
         
-        file_name = str(i+1) +".png"
-        save_image(concat_images(a,b,out), os.path.join(path,file_name)) 
-        print(f"file saved at: {os.path.join(path,file_name)}")
+        print(f"file {i+1}.png saved.")
 
 opt_path = os.path.join(os.getcwd(),"models","pix2seg","params.txt")
 opt = load_opt(opt_path)
