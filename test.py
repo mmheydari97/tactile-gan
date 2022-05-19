@@ -37,8 +37,16 @@ def load_model(model_path, opt,device):
 
 def load_data(photo_path,opt):
     data = get_dataset(photo_path, opt, mode='test')
-    dataset = DataLoader(dataset=data, batch_size=1, shuffle=False,num_workers=4)
+    dataset = DataLoader(dataset=data, batch_size=1, shuffle=False, num_workers=4)
     return dataset
+
+def load_arrays(path):
+    gen_loss = np.load(os.path.join(path, "genloss.npy"))
+    disc_loss = np.load(os.path.join(path, "discloss.npy"))
+    l1_loss = np.load(os.path.join(path, "l1loss.npy"))
+    gp_loss = np.load(os.path.join(path, "gploss.npy"))
+    return {"gen":gen_loss, "disc":disc_loss, "l1":l1_loss, "gp":gp_loss}
+
 
 def unnormalize(a):
     return a/2 +0.5
@@ -93,6 +101,8 @@ Gen = load_model(model_path,opt,device)
 
 photo_path_test= os.path.join(os.getcwd(),"data","test","source")
 dataset = load_data(photo_path_test,opt)
+
+
 
 output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_load)
 mkdir(output_path)
