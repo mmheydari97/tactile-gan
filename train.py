@@ -63,6 +63,8 @@ class Train_Pix2Pix:
         self.disc_loss = []
         self.l1_loss = []
         self.per_loss = []
+        self.gp_loss = []
+
 
         if opt.continue_training:
             checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_load,"final_model.pth"))
@@ -179,6 +181,7 @@ class Train_Pix2Pix:
             self.disc_loss.append(mean(lossdlist))
             self.l1_loss.append(mean(lossl1list))
             self.per_loss.append(mean(lossperlist))
+            self.gp_loss.append(mean(gp_dloss_list))
             if opt.checkpoint_interval != -1 and epoch%opt.checkpoint_interval == 0:
                 self.save_model(f"{opt.dir}/checkpoints/{opt.folder_save}/model_{epoch}.pth")
 
@@ -235,6 +238,9 @@ class Train_Pix2Pix:
         np.save( os.path.join(path,"genloss"),np.asarray(self.gen_loss))
         np.save( os.path.join(path,"discloss"),np.asarray(self.disc_loss))
         np.save( os.path.join(path,"l1loss"),np.asarray(self.l1_loss))
+        np.save( os.path.join(path,"perloss"),np.asarray(self.per_loss))
+        np.save( os.path.join(path,"gploss"),np.asarray(self.gp_loss))
+
         
     def save_hyper_params(self,folderpath,opt):
         '''
