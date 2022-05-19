@@ -2,6 +2,7 @@ from operator import concat
 import os
 import json
 import numpy as np
+import matplotlib.pyplot as plt
 from PIL import Image
 from PIL.ImageOps import invert
 import torch
@@ -73,6 +74,15 @@ def visualize(out):
 def concat_images(photo,sketch,output):
     return torch.cat((photo,sketch,output),2)
 
+def save_plot(loss_dict, opt):
+	x = np.array(range(opt.epoch_count, opt.epoch_count+opt.total_iters))
+	legends = loss_dict.keys()
+	for y in loss_dict.values():
+		plt.plot(x,y)
+	plt.legend(legends)
+	plt.savefig(os.path.join(os.getcwd(),"models",opt.folder_load,"loss.png"))
+
+
 def save_images(dataset,path):
     for i, batch in enumerate(dataset):
         real_A, real_B = batch[0], batch[1]
@@ -102,7 +112,9 @@ Gen = load_model(model_path,opt,device)
 photo_path_test= os.path.join(os.getcwd(),"data","test","source")
 dataset = load_data(photo_path_test,opt)
 
-
+loss_path = os.path.join(os.getcwd(), "models", opt.folder_load)
+losses = load_arrays(loss_path)
+save_plot(losses, opt)
 
 output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_load)
 mkdir(output_path)
