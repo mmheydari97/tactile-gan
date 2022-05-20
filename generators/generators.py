@@ -50,7 +50,7 @@ class GANLoss(nn.Module):
         if target_is_real:
             if self.real_label_tensor is None:
                 if self.label_smoothing:
-                    self.real_label_tensor = torch.clamp(torch.normal(self.real_label, .02, size=input.size()), 0, 1)
+                    self.real_label_tensor = torch.clamp(torch.normal(self.real_label, .02, size=input.size()), 0, 1).type(self.Tensor)
                 else:
                     self.real_label_tensor = self.Tensor(1).fill_(self.real_label)
                 self.real_label_tensor.requires_grad_(False)
