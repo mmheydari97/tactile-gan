@@ -27,3 +27,16 @@ class PatchDiscriminator(nn.Module):
         # Concatenate image and condition image by channels to produce input
         img_input = torch.cat((img_A, img_B), 1)
         return self.model(img_input)
+
+    def intermediate_layer(self):
+        pass
+
+if __name__ == "__main__":
+    disc = PatchDiscriminator(3, 4)
+    a = torch.randn(1, 3, 256, 256)
+    b = torch.randn(1, 4, 256, 256)
+    out = disc(a, b)
+    for module in disc.children():
+        for layer in module.children():
+            if isinstance(layer, nn.Conv2d):
+                print(layer.weight.shape)
