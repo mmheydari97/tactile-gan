@@ -22,8 +22,10 @@ def create_gen(name, in_nc, out_nc, multigpu=False):
     return netG
 
 class GANLoss(nn.Module):
-    def __init__(self, gan_mode='hinge', target_real_label=1.0, target_fake_label=0.0, tensor=torch.FloatTensor):
+    def __init__(self, gan_mode='hinge', label_smoothing=False, target_real_label=1.0, target_fake_label=0.0, tensor=torch.FloatTensor):
         super(GANLoss, self).__init__()
+
+        self.label_smoothing = label_smoothing
         self.real_label = target_real_label
         self.fake_label = target_fake_label
         self.real_label_tensor = None
@@ -47,7 +49,10 @@ class GANLoss(nn.Module):
     def get_target_tensor(self, input, target_is_real):
         if target_is_real:
             if self.real_label_tensor is None:
-                self.real_label_tensor = self.Tensor(1).fill_(self.real_label)
+                if self.label_smoothing:
+                    self.real_label_tensor = torch.clamp(torch.normal(self.real_label, .02, size=input.size()), 0, 1)
+                else:
+                    self.real_label_tensor = self.Tensor(1).fill_(self.real_label)
                 self.real_label_tensor.requires_grad_(False)
             return self.real_label_tensor.expand_as(input)
         else:

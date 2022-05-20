@@ -1,24 +1,21 @@
-import re
+import argparse
+import json
+import os
+from statistics import mean
+import time
+
+import numpy as np
+
 import torch
 import torch.nn as nn
-
-import argparse
-import os
-import json
-
-import torch.optim as optim
+from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
-from statistics import mean
 
-from torch.nn import init
-from torch.optim import lr_scheduler
-import numpy as np
-import time
 from generators.generators import create_gen, GANLoss
 from discriminators.discriminators import create_disc
 from datasets.datasets import get_dataset
-from util import set_requires_grad, init_weights, mkdir, VGGPerceptualLoss
+from util import set_requires_grad, init_weights, mkdir, perceptual_loss
 
 
 class Train_Pix2Pix:
@@ -43,11 +40,8 @@ class Train_Pix2Pix:
         init_weights(self.netD)
 
      
-        self.gan_loss = GANLoss(gan_mode='ls', tensor=torch.cuda.FloatTensor)
+        self.gan_loss = GANLoss(gan_mode='ls', label_smoothing=opt.label_smoothing, tensor=torch.cuda.FloatTensor)
           
-        self.real_label_value = 1.0
-        self.fake_label_value = 0.0
-        
         #optimizers and attach them to schedulers that change learning rate
         self.schedulers = []
         self.optimizers = []
@@ -81,8 +75,6 @@ class Train_Pix2Pix:
         '''
 
         # load vgg if we want to use perceptual loss
-        if opt.lambda_per != 0:
-            perceptual = VGGPerceptualLoss(resize=True)
 
         for i in range(opt.total_iters):
             epoch = i + opt.epoch_count
@@ -91,7 +83,7 @@ class Train_Pix2Pix:
             lossglist = []
             lossl1list = []
             lossperlist = []
-            gp_dloss_list = []
+            lossgpdlist = []
             
             t1 = time.time()
             
@@ -110,13 +102,6 @@ class Train_Pix2Pix:
                 pred_fake = self.netD(real_A, fake_B.detach()) #generate predictions on fake images
                 pred_real = self.netD(real_A, real_B)
                 
-                # #create labels, either 1's or 0.9 if we're smooting.  
-                # if opt.label_smoothing:
-                #     real_labels = torch.normal(.9, .02, size=pred_fake.size()).to(self.device)
-                # else:
-                #     real_labels = torch.full(pred_fake.size(),self.real_label_value).to(self.device)
-                # fake_labels = torch.full(pred_fake.size(),self.fake_label_value).to(self.device)
-
                 
                 loss_D_fake = self.gan_loss(pred_fake, False, for_discriminator=True).mean()
 
@@ -137,16 +122,16 @@ class Train_Pix2Pix:
                     gp_loss = self.gradient_penalty(real_A, real_B, fake_B, lambda_gp=opt.lambda_gp)
                     gp_loss.backward(retain_graph=True)
                     self.optimizer_D.step()
-                    gp_dloss_list.append(gp_loss.item())
+                    lossgpdlist.append(gp_loss.item())
                 else:
-                    gp_dloss_list.append(0)
+                    lossgpdlist.append(0)
 
 
                 # Optimize G #####################################
                 set_requires_grad(nets=self.netD, requires_grad=False) #dont want the discriminator to update weights this round
                 self.optimizer_G.zero_grad()
-
                 pred_fake = self.netD(real_A, fake_B) #generate D predictions of fake images
+
                 loss_G_GAN = self.gan_loss(pred_fake, True, for_discriminator=False).mean() #We feed it real_labels as G is trying fool the discriminator
                 lossglist.append(loss_G_GAN.item())
                 
@@ -155,12 +140,14 @@ class Train_Pix2Pix:
 
                 loss_G = loss_G_GAN + loss_G_L1 * opt.lambda_a
                 if opt.lambda_per != 0:
-                    per_loss = perceptual.forward(fake_B, real_A, [0,1])
+                    features_fake = self.netD.get_intermediate_output()
+                    _ = self.netD(real_A, real_B)
+                    features_real = self.netD.get_intermediate_output()
+                    per_loss = perceptual_loss(features_real, features_fake, weights=opt.w_per)
                     loss_G += per_loss * opt.lambda_per
                     lossperlist.append(per_loss.item())
                 else:
                     lossperlist.append(0)
-                
                 
                 loss_G.backward()
                 self.optimizer_G.step()
@@ -173,7 +160,7 @@ class Train_Pix2Pix:
             print('learning rate = %.7f' % lr)
             t2 = time.time()
             diff = t2-t1
-            print("iteration:",epoch,"loss D:", mean(lossdlist),"loss G:", mean(lossglist), "loss L1:", mean(lossl1list), "loss gp:", mean(gp_dloss_list))
+            print(f"iteration:{epoch}, D:{mean(lossdlist):.5f}, G:{mean(lossglist):.5f}, L1:{mean(lossl1list):.5f}, gp:{mean(lossgpdlist):.5f}, per:{mean(lossperlist):.5f}")
             print("Took ", diff, "seconds")
             print("Estimated time left:", diff*(opt.total_iters - epoch))
 
@@ -181,14 +168,13 @@ class Train_Pix2Pix:
             self.disc_loss.append(mean(lossdlist))
             self.l1_loss.append(mean(lossl1list))
             self.per_loss.append(mean(lossperlist))
-            self.gp_loss.append(mean(gp_dloss_list))
+            self.gp_loss.append(mean(lossgpdlist))
             if opt.checkpoint_interval != -1 and epoch%opt.checkpoint_interval == 0:
                 self.save_model(f"{opt.dir}/checkpoints/{opt.folder_save}/model_{epoch}.pth")
 
 
     @staticmethod
     def get_scheduler(optimizer):
-
         milestone = np.int16(np.linspace(opt.iter_constant, opt.total_iters, 11)[:-1])
         scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=list(milestone), gamma=0.8)
         return scheduler
@@ -266,6 +252,7 @@ parser.add_argument("--threads", type=int, default=8, help="cpu threads for load
 parser.add_argument("--lambda_a", type=float, default=5, help="L1 lambda")
 parser.add_argument('--lambda_gp', type=float, default=0.1, help="gradient penalty lambda")
 parser.add_argument("--lambda_per", type=float, default=0.0, help="perceptual lambda")
+parser.add_argument('--w_per', nargs=4, type=float, default=[1,1,1,1], help='perceptual weights')
 parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet"], help="generator architecture")
 parser.add_argument("--disc", default="Patch", choices=["Global", "Patch"], help="discriminator architecture")
 parser.add_argument("--no_aug", default=False, action='store_true', help="if written, we won't augment the dataset")
