@@ -46,7 +46,8 @@ def load_arrays(path):
     disc_loss = np.load(os.path.join(path, "discloss.npy"))
     l1_loss = np.load(os.path.join(path, "l1loss.npy"))
     gp_loss = np.load(os.path.join(path, "gploss.npy"))
-    return {"gen":gen_loss, "disc":disc_loss, "l1":l1_loss, "gp":gp_loss}
+    per_loss = np.load(os.path.join(path, "perloss.npy"))
+    return {"gen":gen_loss, "disc":disc_loss, "l1":l1_loss, "gp":gp_loss, "per": per_loss}
 
 
 def unnormalize(a):
