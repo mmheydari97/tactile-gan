@@ -54,16 +54,21 @@ def unnormalize(a):
     return a/2 +0.5
 
 def visualize(out):
-    ax = invert(ToPILImage()(out[0])).convert("RGB")
+    ax_msk = invert(ToPILImage()(out[0]))
     grid_msk = ToPILImage()(out[1])
     content_msk = ToPILImage()(out[2])
-
+    
+    ax = np.expand_dims(np.array(ax_msk), axis=2)
     content = np.expand_dims(np.array(content_msk), axis=2)
     grid = np.expand_dims(np.array(grid_msk), axis=2)
 
     blk = np.zeros((256,256,2), dtype=np.uint8)
+    
+    ax = np.concatenate((ax,ax,ax), axis=2)
     content = np.concatenate((content, blk), axis=2)
     grid = np.concatenate((blk, grid), axis=2)
+    
+    ax = Image.fromarray(ax)
     content = Image.fromarray(content)
     grid = Image.fromarray(grid)
     
@@ -81,6 +86,8 @@ def save_plot(loss_dict, opt):
 	for y in loss_dict.values():
 		plt.plot(x,y)
 	plt.legend(legends)
+	plt.xlabel("iteration")
+	plt.ylabel("loss")
 	plt.savefig(os.path.join(os.getcwd(),"models",opt.folder_load,"loss.png"))
 
 
