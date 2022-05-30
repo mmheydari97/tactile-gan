@@ -237,12 +237,12 @@ class Train_Pix2Pix:
         
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dir", help="data directory")
+parser.add_argument("--dir", default="./", help="data directory")
 parser.add_argument("--batch_size", type=int, default=1, help="training batch size")
 parser.add_argument("--input_dim", type=int, default=3, help="input depth size")
 parser.add_argument("--output_dim", type=int, default=3, help="output depth size")
 parser.add_argument("--epoch_count", type=int, default=1, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
-parser.add_argument("--total_iters", type=int, help="total epochs we're training for")
+parser.add_argument("--total_iters", type=int, default=135, help="total epochs we're training for")
 parser.add_argument("--iter_constant", type=int, default=25, help="how many epochs we keep the learning rate constant")
 parser.add_argument("--lr", type=float, default=0.002, help="learning rate")
 parser.add_argument("--label_smoothing", default=False, action='store_true', help="if written, we will not use one sided label smoothing")
