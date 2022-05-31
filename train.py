@@ -251,7 +251,7 @@ parser.add_argument("--cuda", default=True, action='store_false', help="if writt
 parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
 parser.add_argument("--lambda_a", type=float, default=5, help="L1 lambda")
 parser.add_argument('--lambda_gp', type=float, default=0.1, help="gradient penalty lambda")
-parser.add_argument("--lambda_per", type=float, default=0.0, help="perceptual lambda")
+parser.add_argument("--lambda_per", type=float, default=0.1, help="perceptual lambda")
 parser.add_argument('--w_per', nargs=4, type=float, default=[1,1,1,1], help='perceptual weights')
 parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet"], help="generator architecture")
 parser.add_argument("--disc", default="Patch", choices=["Global", "Patch"], help="discriminator architecture")

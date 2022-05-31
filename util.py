@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from torch.nn import init
 import os
@@ -30,7 +31,7 @@ def mkdir(path):
         os.makedirs(path)
 
 
-def perceptual_loss(real_features, fake_features, mode='normal', loss_type='l1', weights=[0.1, 0.1, 0.1, 0.1]):
+def perceptual_loss(real_features, fake_features, mode='normal', loss_type='l1', weights=[1, 1, 1, 1]):
     if mode in ['normal', 'gram']:
         pass
     else:
@@ -43,11 +44,15 @@ def perceptual_loss(real_features, fake_features, mode='normal', loss_type='l1',
         raise ValueError('loss_type must be l1 or l2')
     if len(weights) != 4:
         raise ValueError('weights must be a list of 4 numbers')
+    weights = np.array(weights)/np.sum(weights)
     loss = 0.0
     for i in range(4):
+        # for feature comparison
         if mode == 'normal':
             lo = lfunc(real_features[i], fake_features[i])
+            
 
+        # for style comparison
         elif mode == 'gram':
             act_real = real_features[i].reshape(real_features[i].shape[0], real_features[i].shape[1], -1)
             act_fake = fake_features[i].reshape(fake_features[i].shape[0], fake_features[i].shape[1], -1)
@@ -56,3 +61,4 @@ def perceptual_loss(real_features, fake_features, mode='normal', loss_type='l1',
             lo = lfunc(gram_real, gram_fake)
         loss += lo * weights[i]
     return loss
+
