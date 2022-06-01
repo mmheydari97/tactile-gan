@@ -8,14 +8,15 @@
 source $HOME/dlenv/bin/activate
 SOURCEDIR=$HOME/Tactile/Pix2Pix
 mkdir $SLURM_TMPDIR/data
-mkdir $SLURM_TMPDIR/temp
+# mkdir $SLURM_TMPDIR/temp
 
-tar -xzf ./tactile_int.tar.gz -C $SLURM_TMPDIR/data
-
-tar -xzf saved_models_new.tar.gz -C $SLURM_TMPDIR/temp
-mv $SLURM_TMPDIR/temp/*/*/models $SLURM_TMPDIR
+unzip -qq $HOME/Tactile/data.zip -d $SLURM_TMPDIR
+# tar -xzf saved_model.tar.gz -C $SLURM_TMPDIR/temp
+# mv $SLURM_TMPDIR/temp/*/*/models $SLURM_TMPDIR
 
 module load cuda cudnn
-python3 $SOURCEDIR/Pix2Pix.py --dir $SLURM_TMPDIR --total_iters 130 --iter_decay 150 --batch_size 1 --loss ls --lambda_A 5.0 --lambda_per 0.1
-tar -czf saved_models_latest.tar.gz $SLURM_TMPDIR/models/*
+python3 $SOURCEDIR/train.py --dir $SLURM_TMPDIR --total_iters 135 --lambda_per 0.1 --batch_size 4 --w_per 1 0 0 0 --no_aug --label_smoothing
+tar -czf saved_m_b4_per.tar.gz $SLURM_TMPDIR/models/*
+# tar -czf saved_ch_unet_reg.tar.gz $SLURM_TMPDIR/checkpoints/*
+
 
