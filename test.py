@@ -1,4 +1,4 @@
-from operator import concat
+import argparse
 import os
 import json
 import numpy as np
@@ -110,7 +110,11 @@ def save_images(dataset,path):
         
         print(f"file {i+1}.png saved.")
 
-opt_path = os.path.join(os.getcwd(),"models","pix2seg","params.txt")
+parser = argparse.ArgumentParser()
+parser.add_argument("--folder", default="pix2seg", help="The folder path including params.txt")
+opt = parser.parse_args()
+
+opt_path = os.path.join(os.getcwd(),"models",opt.folder,"params.txt")
 opt = load_opt(opt_path)
 device = torch.device("cuda:0")
 
