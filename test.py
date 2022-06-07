@@ -1,6 +1,7 @@
 import argparse
 import os
 import json
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -114,7 +115,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--folder", default="pix2seg", help="The folder path including params.txt")
 opt = parser.parse_args()
 
-opt_path = os.path.join(os.getcwd(),"models",opt.folder,"params.txt")
+opt_path = os.path.join(os.getcwd(),"models", opt.folder.split("/")[-1], "params.txt")
 opt = load_opt(opt_path)
 device = torch.device("cuda:0")
 
