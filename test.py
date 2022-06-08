@@ -112,7 +112,7 @@ def save_images(dataset,path):
         print(f"file {i+1}.png saved.")
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--folder", default="pix2seg", help="The folder path including params.txt")
+parser.add_argument("--folder", default="pix2obj", help="The folder path including params.txt")
 opt = parser.parse_args()
 
 opt_path = os.path.join(os.getcwd(),"models", opt.folder.split("/")[-1], "params.txt")
