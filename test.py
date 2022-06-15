@@ -100,13 +100,13 @@ def save_images(model, dataset, path):
             out = model(real_A.to(device)).cpu()
 
         a = unnormalize(real_A[0])
-        b = unnormalize(real_B[0])
-        out = unnormalize(out[0])
+        b = real_B[0]
+        out = out[0]
         
         # numerical log
         # np.savetxt(os.path.join(path,f"e_{i+1}.txt"), a[2].numpy())
-        # print(f"Out => min:{out.numpy().min()} max:{out.numpy().max()} avg:{out.numpy().mean()} std:{out.numpy().std()}")
-        # print(f"Fake => min:{b[0].numpy().min()} max:{b[0].numpy().max()} avg:{b[0].numpy().mean()} std:{b[0].numpy().std()}")
+        # print(f"Out => min:{b.numpy().min()} max:{b.numpy().max()} avg:{b.numpy().mean()} std:{b.numpy().std()}")
+        # print(f"Fake => min:{real_B[0].numpy().min()} max:{real_B[0].numpy().max()} avg:{real_B[0].numpy().mean()} std:{real_B[0].numpy().std()}")
         
         # visual log
         # plt.figure(figsize=(10,7))
@@ -126,31 +126,6 @@ def save_images(model, dataset, path):
         print(f"file e_{i+1}.png saved.")
 
 
-def find_threshold(model, dataset, init_min=0.0001, init_max=0.9999, delta=0.001, metric='dice', max_iter=100):
-    
-    score_old = 0
-    score_new = 1
-    x_0 = init_min
-    x_1 = init_max
-    pass
-    while (loss_new - loss_old) > delta:
-        thr = (x_0+x_1)/2
-        score = []
-        for i, batch in enumerate(dataset):
-            real_A, real_B = batch[0], batch[1]
-            with torch.no_grad():
-                out = model(real_A.to(device)).cpu()
-                
-
-            b = unnormalize(real_B[0])
-            out = unnormalize(out[0])
-            
-            
-            
-            if i>= (max_iter-1):
-                break
-        
-
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--folder", default="pix2obj", help="The folder path including params.txt")
@@ -163,10 +138,7 @@ if __name__=='__main__':
     model_path = os.path.join(os.getcwd(),"models",opt.folder_load,"final_model.pth")
     gen = load_model(model_path,opt,device)
 
-    photo_path_train= os.path.join(os.getcwd(),"data","train","source")
-    dataset_train = load_data(photo_path_train, opt, shuffle=True)
-
-    # thresh = find_threshold(
+    
 
     photo_path_test= os.path.join(os.getcwd(),"data","test","source")
     dataset = load_data(photo_path_test,opt, shuffle=False)

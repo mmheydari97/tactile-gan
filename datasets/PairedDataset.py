@@ -76,7 +76,7 @@ class PairedDataset(Dataset):
 
         else:
             img_tensor = self.preprocess(source)
-            mask_tensor = self.preprocess(tactile)
+            mask_tensor = transforms.ToTensor()(tactile)
 
         return img_tensor, mask_tensor
         
