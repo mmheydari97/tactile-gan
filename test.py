@@ -3,8 +3,9 @@ import os
 import json
 import re
 import numpy as np
-import scipy.misc
+import matplotlib.image
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
 import seaborn as sns
 from PIL import Image
 from PIL.ImageOps import invert
@@ -94,15 +95,46 @@ def save_plot(loss_dict, opt):
 	plt.savefig(os.path.join(os.getcwd(),"models",opt.folder_load,"loss.png"))
 
 def eval_model(model, dataset, path):
+    jaccard = []
+    dice = []
+    accuracy = []
+    
     for i, batch in enumerate(dataset):
         real_A, real_B = batch[0], batch[1]
         with torch.no_grad():
             out = model(real_A.to(device)).cpu()
 
-        b = np.array(ToPILImage()(real_B[0]).convert('1'), dtype=np.float32)
-        scipy.misc.imsave(os.path.join(path,f"e_b_{i+1}.png"), b[0])
+        fake_axis = np.array(ToPILImage()(real_B[0][0]).convert('1'),dtype=np.uint8).flatten()
+        fake_grid = np.array(ToPILImage()(real_B[0][1]).convert('1'),dtype=np.uint8).flatten()
+        fake_cont = np.array(ToPILImage()(real_B[0][2]).convert('1'),dtype=np.uint8).flatten()
 
-        out = np.array(ToPILImage()(out[0]).convert('1'), dtype=np.float32)
+        gen_axis = np.array(ToPILImage()(out[0][0]).convert('1'), dtype=np.uint8).flatten()
+        gen_grid = np.array(ToPILImage()(out[0][0]).convert('1'), dtype=np.uint8).flatten()
+        gen_cont = np.array(ToPILImage()(out[0][0]).convert('1'), dtype=np.uint8).flatten()
+        
+        cm_axis = confusion_matrix(fake_axis, gen_axis)
+        cm_grid = confusion_matrix(fake_grid, gen_grid)
+        cm_cont = confusion_matrix(fake_cont, gen_cont)
+        
+        j_axis = cm_axis[1,1]/(cm_axis[1,1] + cm_axis[0,1] + cm_axis[1,0])
+        j_grid = cm_grid[1,1]/(cm_grid[1,1] + cm_grid[0,1] + cm_grid[1,0])
+        j_cont = cm_cont[1,1]/(cm_cont[1,1] + cm_cont[0,1] + cm_cont[1,0])
+        jaccard.append((j_axis+j_grid+j_cont)/3)
+        
+        d_axis = cm_axis[1,1]/(cm_axis[1,1] + 0.5*(cm_axis[0,1] + cm_axis[1,0]))
+        d_grid = cm_grid[1,1]/(cm_grid[1,1] + 0.5*(cm_grid[0,1] + cm_grid[1,0]))
+        d_cont = cm_cont[1,1]/(cm_cont[1,1] + 0.5*(cm_cont[0,1] + cm_cont[1,0]))
+        dice.append((d_axis+d_grid+d_cont)/3)
+        
+        a_axis = (cm_axis[1,1]+cm_axis[0,0])/np.sum(cm_axis)
+        a_grid = (cm_grid[1,1]+cm_grid[0,0])/np.sum(cm_grid)
+        a_cont = (cm_cont[1,1]+cm_cont[0,0])/np.sum(cm_cont)
+        accuracy.append((a_axis+a_grid+a_cont)/3)
+        
+    print(f"Pixel Accuracy => min:{np.min(accuracy)}, max:{np.max(accuracy)}, avg:{np.mean(accuracy)}, std:{np.std(accuracy)}")
+    print(f"Dice Coeff => min:{np.min(dice)}, max:{np.max(dice)}, avg:{np.mean(dice)}, std:{np.std(dice)}")
+    print(f"Jaccard Index => min:{np.min(jaccard)}, max:{np.max(jaccard)}, avg:{np.mean(jaccard)}, std:{np.std(jaccard)}")
+    return {"Acc": np.mean(accuracy), "IoU": np.mean(jaccard), "Dice": np.mean(dice)}
 
 def save_images(model, dataset, path):
     for i, batch in enumerate(dataset):
@@ -160,5 +192,6 @@ if __name__=='__main__':
 
     output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_load)
     mkdir(output_path)
+    eval_model(gen, dataset,output_path)
     save_images(gen, dataset,output_path)
 
