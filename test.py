@@ -4,6 +4,7 @@ import json
 import re
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 from PIL import Image
 from PIL.ImageOps import invert
 import torch
@@ -29,17 +30,17 @@ def load_opt(path):
     return opt
 
 def load_model(model_path, opt,device):
-    G = create_gen(opt.gen,opt.input_dim,opt.output_dim,multigpu=False)
-    G.to(device)
+    gen = create_gen(opt.gen,opt.input_dim,opt.output_dim,multigpu=False)
+    gen.to(device)
     
     checkpoint = torch.load(model_path)
-    G.load_state_dict(checkpoint["gen"], strict=False)
-    return G
+    gen.load_state_dict(checkpoint["gen"], strict=False)
+    return gen
 
 
-def load_data(photo_path,opt):
-    data = get_dataset(photo_path, opt, mode='test')
-    dataset = DataLoader(dataset=data, batch_size=1, shuffle=False, num_workers=4)
+def load_data(photo_path,opt, mode='test', shuffle=False):
+    data = get_dataset(photo_path, opt, mode=mode)
+    dataset = DataLoader(dataset=data, batch_size=1, shuffle=shuffle, num_workers=4)
     return dataset
 
 def load_arrays(path):
@@ -92,44 +93,89 @@ def save_plot(loss_dict, opt):
 	plt.savefig(os.path.join(os.getcwd(),"models",opt.folder_load,"loss.png"))
 
 
-def save_images(dataset,path):
+def save_images(model, dataset, path):
     for i, batch in enumerate(dataset):
         real_A, real_B = batch[0], batch[1]
         with torch.no_grad():
-            out = Gen(real_A.to(device)).cpu()
+            out = model(real_A.to(device)).cpu()
 
         a = unnormalize(real_A[0])
         b = unnormalize(real_B[0])
         out = unnormalize(out[0])
-
+        
+        # numerical log
+        # np.savetxt(os.path.join(path,f"e_{i+1}.txt"), a[2].numpy())
+        # print(f"Out => min:{out.numpy().min()} max:{out.numpy().max()} avg:{out.numpy().mean()} std:{out.numpy().std()}")
+        # print(f"Fake => min:{b[0].numpy().min()} max:{b[0].numpy().max()} avg:{b[0].numpy().mean()} std:{b[0].numpy().std()}")
+        
+        # visual log
+        # plt.figure(figsize=(10,7))
+        # sns.distplot(b[0].numpy(),label="ch_0")
+        # sns.distplot(b[1].numpy(),label="ch_1")
+        # sns.distplot(b[2].numpy(),label="ch_2")
+        # plt.legend()
+        # plt.savefig(os.path.join(path,f"e_pdf_{i+1}.png"))
+        
         b_img = visualize(b)
         out_img = visualize(out)
-        save_image(concat_images(a, b_img, out_img), os.path.join(path,f"{i+1}.png")) 
+        save_image(concat_images(a, b_img, out_img), os.path.join(path,f"e_{i+1}.png")) 
         b_elements = concat_images(torch.unsqueeze(b[0],0), torch.unsqueeze(b[1],0), torch.unsqueeze(b[2],0))
         out_elements = concat_images(torch.unsqueeze(out[0],0), torch.unsqueeze(out[1],0), torch.unsqueeze(out[2],0))
-        save_image(torch.cat((b_elements, out_elements), 1), os.path.join(path,f"{i+1}_elements.png")) 
+        save_image(torch.cat((b_elements, out_elements), 1), os.path.join(path,f"e_{i+1}_elements.png")) 
         
-        print(f"file {i+1}.png saved.")
+        print(f"file e_{i+1}.png saved.")
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--folder", default="pix2obj", help="The folder path including params.txt")
-opt = parser.parse_args()
 
-opt_path = os.path.join(os.getcwd(),"models", opt.folder.split("/")[-1], "params.txt")
-opt = load_opt(opt_path)
-device = torch.device("cuda:0")
+def find_threshold(model, dataset, init_min=0.0001, init_max=0.9999, delta=0.001, metric='dice', max_iter=100):
+    
+    score_old = 0
+    score_new = 1
+    x_0 = init_min
+    x_1 = init_max
+    pass
+    while (loss_new - loss_old) > delta:
+        thr = (x_0+x_1)/2
+        score = []
+        for i, batch in enumerate(dataset):
+            real_A, real_B = batch[0], batch[1]
+            with torch.no_grad():
+                out = model(real_A.to(device)).cpu()
+                
 
-model_path = os.path.join(os.getcwd(),"models",opt.folder_load,"final_model.pth")
-Gen = load_model(model_path,opt,device)
+            b = unnormalize(real_B[0])
+            out = unnormalize(out[0])
+            
+            
+            
+            if i>= (max_iter-1):
+                break
+        
 
-photo_path_test= os.path.join(os.getcwd(),"data","test","source")
-dataset = load_data(photo_path_test,opt)
+if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--folder", default="pix2obj", help="The folder path including params.txt")
+    opt = parser.parse_args()
 
-loss_path = os.path.join(os.getcwd(), "models", opt.folder_load)
-losses = load_arrays(loss_path)
-save_plot(losses, opt)
+    opt_path = os.path.join(os.getcwd(),"models", opt.folder.split("/")[-1], "params.txt")
+    opt = load_opt(opt_path)
+    device = torch.device("cuda:0")
 
-output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_load)
-mkdir(output_path)
-save_images(dataset,output_path)
+    model_path = os.path.join(os.getcwd(),"models",opt.folder_load,"final_model.pth")
+    gen = load_model(model_path,opt,device)
+
+    photo_path_train= os.path.join(os.getcwd(),"data","train","source")
+    dataset_train = load_data(photo_path_train, opt, shuffle=True)
+
+    # thresh = find_threshold(
+
+    photo_path_test= os.path.join(os.getcwd(),"data","test","source")
+    dataset = load_data(photo_path_test,opt, shuffle=False)
+
+    loss_path = os.path.join(os.getcwd(), "models", opt.folder_load)
+    losses = load_arrays(loss_path)
+    save_plot(losses, opt)
+
+    output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_load)
+    mkdir(output_path)
+    save_images(gen, dataset,output_path)
 

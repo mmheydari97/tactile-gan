@@ -249,7 +249,7 @@ parser.add_argument("--label_smoothing", default=True, action='store_true', help
 parser.add_argument("--beta1", type=float, default=0.01, help="beta1 for our Adam optimizer")
 parser.add_argument("--cuda", default=True, action='store_false', help="if written, we will not use gpu accelerated training")
 parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
-parser.add_argument("--lambda_a", type=float, default=10, help="L1 loss coefficient")
+parser.add_argument("--lambda_a", type=float, default=5, help="L1 loss coefficient")
 parser.add_argument('--lambda_gp', type=float, default=0.1, help="gradient penalty coefficient")
 parser.add_argument("--lambda_per", type=float, default=0.2, help="perceptual loss coefficient")
 parser.add_argument('--w_per', nargs=4, type=float, default=[0,.1,.3,.6], help='perceptual weights')
