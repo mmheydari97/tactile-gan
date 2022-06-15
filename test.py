@@ -3,6 +3,7 @@ import os
 import json
 import re
 import numpy as np
+import scipy.misc
 import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
@@ -92,6 +93,16 @@ def save_plot(loss_dict, opt):
 	plt.ylabel("loss")
 	plt.savefig(os.path.join(os.getcwd(),"models",opt.folder_load,"loss.png"))
 
+def eval_model(model, dataset, path):
+    for i, batch in enumerate(dataset):
+        real_A, real_B = batch[0], batch[1]
+        with torch.no_grad():
+            out = model(real_A.to(device)).cpu()
+
+        b = np.array(ToPILImage()(real_B[0]).convert('1'), dtype=np.float32)
+        scipy.misc.imsave(os.path.join(path,f"e_b_{i+1}.png"), b[0])
+
+        out = np.array(ToPILImage()(out[0]).convert('1'), dtype=np.float32)
 
 def save_images(model, dataset, path):
     for i, batch in enumerate(dataset):
