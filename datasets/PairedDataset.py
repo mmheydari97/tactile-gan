@@ -72,7 +72,7 @@ class PairedDataset(Dataset):
             aug_msk_pil = Image.fromarray(augmented['mask'])
             # apply pixel-wise transformation
             img_tensor = self.preprocess(aug_img_pil)
-            mask_tensor = self.preprocess(aug_msk_pil)
+            mask_tensor = transforms.ToTensor()(aug_msk_pil)
 
         else:
             img_tensor = self.preprocess(source)
