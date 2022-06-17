@@ -11,6 +11,7 @@ import torch.nn as nn
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
+from tqdm import tqdm
 
 from generators.generators import create_gen, GANLoss
 from discriminators.discriminators import create_disc
@@ -87,9 +88,9 @@ class Train_Pix2Pix:
             
             t1 = time.time()
             
-            for j, batch in enumerate(self.dataset):
-                if j % 100 == 0:
-                    print("training epoch ",epoch,"batch", j,"/",len(self.dataset))
+            print("==training epoch ",epoch)
+            for j, batch in enumerate(tqdm(self.dataset)):
+                    
                 real_A, real_B = batch[0].to(self.device), batch[1].to(self.device) #load in a batch of data
 
                 # (generate fake images)
@@ -157,12 +158,12 @@ class Train_Pix2Pix:
             for scheduler in self.schedulers:
                 scheduler.step()
             lr = self.optimizers[0].param_groups[0]['lr']
-            print('learning rate = %.7f' % lr)
             t2 = time.time()
             diff = t2-t1
-            print(f"iteration:{epoch}, D:{mean(lossdlist):.5f}, G:{mean(lossglist):.5f}, L1:{mean(lossl1list):.5f}, gp:{mean(lossgpdlist):.5f}, per:{mean(lossperlist):.5f}")
-            print("Took ", diff, "seconds")
-            print("Estimated time left:", diff*(opt.total_iters - epoch))
+            print(f"\tloss functions => D:{mean(lossdlist):.5f}, G:{mean(lossglist):.5f}, L1:{mean(lossl1list):.5f}, gp:{mean(lossgpdlist):.5f}, per:{mean(lossperlist):.5f}")
+            print(f'\tlearing rate: {lr:.5f}')
+            print(f"\ttook {diff:.2f} seconds")
+            print(f"\tapproximately {diff*(opt.total_iters - epoch):.2f} seconds left")
 
             self.gen_loss.append(mean(lossglist))
             self.disc_loss.append(mean(lossdlist))
@@ -179,7 +180,7 @@ class Train_Pix2Pix:
         scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=list(milestone), gamma=0.8)
         return scheduler
     
-    def gradient_penalty(self, real_img, real_mask, fake_mask, type='mixed', constant=1.0, lambda_gp=10.0):
+    def gradient_penalty(self, real_img, real_mask, fake_mask, type='mixed', constant=1.0, lambda_gp=1.0):
         if lambda_gp > 0.0:
             if type == 'real':
                 interpolates = real_mask
@@ -200,6 +201,7 @@ class Train_Pix2Pix:
                                             only_inputs=True)
             gradients = gradients[0].view(real_mask.size(0),-1)                
             res = (((gradients+1e-16).norm(2, dim=1) - constant) ** 2).mean() * lambda_gp
+            
             return res
         else:
             return 0.0
