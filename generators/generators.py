@@ -37,7 +37,7 @@ class GANLoss(nn.Module):
 
         if gan_mode == 'ls':
             pass
-        elif gan_mode == 'original':
+        elif gan_mode == 'ce':
             pass
         elif gan_mode == 'w':
             pass
@@ -68,7 +68,7 @@ class GANLoss(nn.Module):
         return self.zero_tensor.expand_as(input)
 
     def loss(self, input, target_is_real, for_discriminator=True):
-        if self.gan_mode == 'original':  # cross entropy loss
+        if self.gan_mode == 'ce':  # cross entropy loss
             target_tensor = self.get_target_tensor(input, target_is_real)
             loss = nn.functional.binary_cross_entropy_with_logits(input, target_tensor)
             return loss

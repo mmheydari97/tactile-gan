@@ -41,7 +41,7 @@ class Train_Pix2Pix:
         init_weights(self.netD)
 
      
-        self.gan_loss = GANLoss(gan_mode='ls', label_smoothing=opt.label_smoothing, tensor=torch.cuda.FloatTensor)
+        self.gan_loss = GANLoss(gan_mode=opt.loss, label_smoothing=opt.label_smoothing, tensor=torch.cuda.FloatTensor)
           
         #optimizers and attach them to schedulers that change learning rate
         self.schedulers = []
@@ -259,6 +259,7 @@ parser.add_argument("--lambda_per", type=float, default=0.2, help="perceptual lo
 parser.add_argument('--w_per', nargs=4, type=float, default=[0,.1,.3,.6], help='perceptual weights')
 parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet"], help="generator architecture")
 parser.add_argument("--disc", default="Patch", choices=["Global", "Patch"], help="discriminator architecture")
+parser.add_argument("--loss", default="ls", choices=["ls", "ce", "w", "hinge"], help="loss function for ganloss")
 parser.add_argument("--no_aug", default=False, action='store_true', help="if written, we won't augment the dataset")
 parser.add_argument("--folder_save", default="pix2obj", help="where we want to save the model to")
 parser.add_argument("--folder_load", default="pix2obj", help="where we want to load the model from")
