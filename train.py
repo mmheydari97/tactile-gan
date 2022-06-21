@@ -211,6 +211,8 @@ class Train_Pix2Pix:
         '''
         Saves the models as well as the optimizers
         '''
+        if not os.path.exists(modelpath.rsplit('/',1)[0]):
+            mkdir(modelpath.rsplit('/',1)[0])
         torch.save({
             'gen': self.netG.state_dict(),
             'disc': self.netD.state_dict(),
