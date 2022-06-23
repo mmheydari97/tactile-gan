@@ -241,7 +241,7 @@ class Train_Pix2Pix:
         
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dir", default="./", help="data directory")
+parser.add_argument("--dir", default="./data", help="data directory")
 parser.add_argument("--batch_size", type=int, default=4, help="training batch size")
 parser.add_argument("--input_dim", type=int, default=3, help="input depth size")
 parser.add_argument("--output_dim", type=int, default=3, help="output depth size")
@@ -270,7 +270,7 @@ parser.add_argument('--d_reg_every', type=int, default=4, help='set how frequent
 opt = parser.parse_args()
 
  
-photo_path_train = os.path.join(opt.dir, "data", "train", "source")
+photo_path_train = os.path.join(opt.dir, "train", "source")
 train_set = get_dataset(photo_path_train, opt, mode='train')
 
 experiment = Train_Pix2Pix(opt,train_set)
