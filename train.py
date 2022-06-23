@@ -62,7 +62,7 @@ class Train_Pix2Pix:
 
 
         if opt.continue_training:
-            checkpoint = torch.load(os.path.join(opt.dir,"models",opt.folder_load,"final_model.pth"))
+            checkpoint = torch.load(os.path.join(opt.dir.rsplit("/",1)[0],"models",opt.folder_load,"final_model.pth"))
 
             self.netG.load_state_dict(checkpoint["gen"])
             self.optimizer_G.load_state_dict(checkpoint["optimizerG_state_dict"])
@@ -171,7 +171,7 @@ class Train_Pix2Pix:
             self.per_loss.append(mean(lossperlist))
             self.gp_loss.append(mean(lossgpdlist))
             if opt.checkpoint_interval != -1 and epoch%opt.checkpoint_interval == 0:
-                self.save_model(f"{opt.dir}/checkpoints/{opt.folder_save}/model_{epoch}.pth")
+                self.save_model(f"{opt.dir.rsplit('/',1)[0]}/checkpoints/{opt.folder_save}/model_{epoch}.pth")
 
 
     @staticmethod
@@ -275,9 +275,9 @@ train_set = get_dataset(photo_path_train, opt, mode='train')
 
 experiment = Train_Pix2Pix(opt,train_set)
 
-checkpoint_path = os.path.join(opt.dir,"checkpoints",opt.folder_save)
+checkpoint_path = os.path.join(opt.dir.rsplit("/",1)[0],"checkpoints",opt.folder_save)
 mkdir(checkpoint_path)
-save_path = os.path.join(opt.dir,"models",opt.folder_save)
+save_path = os.path.join(opt.dir.rsplit("/",1)[0],"models",opt.folder_save)
 mkdir(save_path)
 model_path = os.path.join(save_path,"final_model.pth")
 experiment.train(opt)
