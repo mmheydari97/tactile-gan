@@ -1,7 +1,13 @@
+import random
 import numpy as np
 import torch
 from torch.nn import init
 import os
+
+torch.manual_seed(21)
+torch.cuda.manual_seed_all(21)
+random.seed(21)
+np.random.seed(21)
 
 
 def set_requires_grad(nets, requires_grad=False):
