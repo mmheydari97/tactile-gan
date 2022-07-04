@@ -79,9 +79,7 @@ def visualize(out):
     
     ax.paste(grid, (0,0), grid_msk)
     ax.paste(content, (0,0), content_msk)
-    # ax = ax.filter(ImageFilter.MedianFilter(size=1)) meh
-    ax = ax.filter(ImageFilter.DETAIL)
-    # ax.save(f"./Outputs/pil/{np.random.randint(1,10000)}.png")
+    
     return ax
 
 
