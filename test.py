@@ -203,14 +203,14 @@ if __name__=='__main__':
 
     
 
-    photo_path_test= os.path.join(os.getcwd(),"data","test","source")
+    photo_path_test= os.path.join(os.getcwd(),opt.data,"test","source")
     dataset = load_data(photo_path_test,opt, shuffle=False)
 
     loss_path = os.path.join(os.getcwd(), "models", opt.folder_load)
     losses = load_arrays(loss_path)
     save_plot(losses, opt)
 
-    output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_load)
+    output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_save)
     mkdir(output_path)
     eval_model(gen, dataset,output_path)
     save_images(gen, dataset,output_path)

@@ -62,7 +62,7 @@ class Train_Pix2Pix:
 
 
         if opt.continue_training:
-            checkpoint = torch.load(os.path.join(opt.dir.rsplit("/",1)[0],"models",opt.folder_load,"final_model.pth"))
+            checkpoint = torch.load(os.path.join(opt.data.rsplit("/",1)[0],"models",opt.folder_load,"final_model.pth"))
 
             self.netG.load_state_dict(checkpoint["gen"])
             self.optimizer_G.load_state_dict(checkpoint["optimizerG_state_dict"])
@@ -171,7 +171,7 @@ class Train_Pix2Pix:
             self.per_loss.append(mean(lossperlist))
             self.gp_loss.append(mean(lossgpdlist))
             if opt.checkpoint_interval != -1 and epoch%opt.checkpoint_interval == 0:
-                self.save_model(f"{opt.dir.rsplit('/',1)[0]}/checkpoints/{opt.folder_save}/model_{epoch}.pth")
+                self.save_model(f"{opt.data.rsplit('/',1)[0]}/checkpoints/{opt.folder_save}/model_{epoch}.pth")
 
 
     @staticmethod
@@ -241,7 +241,7 @@ class Train_Pix2Pix:
         
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--dir", default="./data", help="data directory")
+parser.add_argument("--data", default="./data", help="dataset directory")
 parser.add_argument("--batch_size", type=int, default=4, help="training batch size")
 parser.add_argument("--input_dim", type=int, default=3, help="input depth size")
 parser.add_argument("--output_dim", type=int, default=3, help="output depth size")
@@ -270,14 +270,14 @@ parser.add_argument('--d_reg_every', type=int, default=4, help='set how frequent
 opt = parser.parse_args()
 
  
-photo_path_train = os.path.join(opt.dir, "train", "source")
+photo_path_train = os.path.join(opt.data, "train", "source")
 train_set = get_dataset(photo_path_train, opt, mode='train')
 
 experiment = Train_Pix2Pix(opt,train_set)
 
-checkpoint_path = os.path.join(opt.dir.rsplit("/",1)[0],"checkpoints",opt.folder_save)
+checkpoint_path = os.path.join(opt.data.rsplit("/",1)[0],"checkpoints",opt.folder_save)
 mkdir(checkpoint_path)
-save_path = os.path.join(opt.dir.rsplit("/",1)[0],"models",opt.folder_save)
+save_path = os.path.join(opt.data.rsplit("/",1)[0],"models",opt.folder_save)
 mkdir(save_path)
 model_path = os.path.join(save_path,"final_model.pth")
 experiment.train(opt)
