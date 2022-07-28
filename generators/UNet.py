@@ -10,7 +10,7 @@ class UNetDown(nn.Module):
         nn.InstanceNorm2d(out_size, affine=True, track_running_stats=False),
         nn.LeakyReLU(0.2),
 
-        nn.Conv2d(in_size, out_size, 3, 1, 1, bias=False),
+        nn.Conv2d(out_size, out_size, 3, 1, 1, bias=False),
         nn.InstanceNorm2d(out_size, affine=True, track_running_stats=False),
         nn.LeakyReLU(0.2)
         ]
@@ -32,7 +32,7 @@ class UNetUp(nn.Module):
             nn.InstanceNorm2d(out_size, affine=True, track_running_stats=False),
             nn.ReLU(inplace=True),
 
-            nn.ConvTranspose2d(in_size, out_size, 3, 1, 1, bias=False),
+            nn.ConvTranspose2d(out_size, out_size, 3, 1, 1, bias=False),
             nn.InstanceNorm2d(out_size, affine=True, track_running_stats=False),
             nn.ReLU(inplace=True)
         ]
@@ -41,7 +41,7 @@ class UNetUp(nn.Module):
 
         self.model = nn.Sequential(*layers)
 
-    def forward(self, x, skip_input):
+    def forward(self, x):
         return self.model(x)
 
 
