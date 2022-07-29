@@ -62,7 +62,7 @@ class Train_Pix2Pix:
 
 
         if opt.continue_training:
-            checkpoint = torch.load(os.path.join(opt.data.rsplit("/",1)[0],"models",opt.folder_load,"final_model.pth"))
+            checkpoint = torch.load(os.path.join(os.getcwd(),"models",opt.folder_load,"final_model.pth"))
 
             self.netG.load_state_dict(checkpoint["gen"])
             self.optimizer_G.load_state_dict(checkpoint["optimizerG_state_dict"])
