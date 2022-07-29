@@ -275,9 +275,10 @@ train_set = get_dataset(photo_path_train, opt, mode='train')
 
 experiment = Train_Pix2Pix(opt,train_set)
 
-checkpoint_path = os.path.join(opt.data.rsplit("/",1)[0],"checkpoints",opt.folder_save)
+checkpoint_path = os.path.join(os.getcwd(),"checkpoints",opt.folder_save)
 mkdir(checkpoint_path)
-save_path = os.path.join(opt.data.rsplit("/",1)[0],"models",opt.folder_save)
+save_path = os.path.join(os.getcwd(),"models",opt.folder_save)
+print(save_path)
 mkdir(save_path)
 model_path = os.path.join(save_path,"final_model.pth")
 experiment.train(opt)
