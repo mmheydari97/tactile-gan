@@ -4,18 +4,17 @@ import torch.nn as nn
 from discriminators.GlobalDiscriminator import GlobalDiscriminator
 from discriminators.PatchDiscriminator import PatchDiscriminator
 
-def create_disc(name,dim, use_sigmoid):
-    if name == "Global":
-        netD = GlobalDiscriminator(dim,use_sigmoid= use_sigmoid)
+def create_disc(name, in_nc, out_nc):
+    if name.lower() == "global":
+        netD = GlobalDiscriminator(in_nc, out_nc)
         
-    elif name == "Patch":
-        netD = PatchDiscriminator(dim,use_sigmoid= use_sigmoid)
+    elif name.lower() == "patch":
+        netD = PatchDiscriminator(in_nc, out_nc)
     else:
         msg = name + " not a valid model"
         raise NameError(msg)  
         
     if torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
         netD = nn.DataParallel(netD)
         
     return netD
