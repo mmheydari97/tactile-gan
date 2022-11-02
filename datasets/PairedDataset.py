@@ -11,13 +11,13 @@ import albumentations.augmentations as A
 
 
 class PairedDataset(Dataset):
-    def __init__(self, img_dir, size=256, mode='train', aug=False, gt=True):
+    def __init__(self, img_dir, size=256, mode='train', aug=False):
         super(PairedDataset, self).__init__()
         self.img_dir = img_dir
         self.size = size
         self.mode = mode
         self.aug = aug
-        self.gt = gt
+        
 
         images = []
         for root, _ , fnames in sorted(os.walk(self.img_dir)):
@@ -58,40 +58,28 @@ class PairedDataset(Dataset):
     def __getitem__(self, i):
         
         source = Image.open(self.images[i]).convert('RGB')
-        
-        if self.gt:
-            tactile_path = self.images[i].replace("source", "tactile").replace("s_", "t_").replace(".png",".tiff").rsplit(".",1)
+        tactile_path = self.images[i].replace("source", "tactile").replace("s_", "t_").replace(".png",".tiff").rsplit(".",1)
 
-            tactile_axes = np.array(Image.open(f"{tactile_path[0]}_axes.{tactile_path[1]}").convert(mode="L"))
-            tactile_grid = np.array(Image.open(f"{tactile_path[0]}_grids.{tactile_path[1]}").convert(mode="L"))
-            tactile_content = np.array(Image.open(f"{tactile_path[0]}_content.{tactile_path[1]}").convert(mode="L"))
-            tactile = np.concatenate([np.expand_dims(tactile_axes,2), np.expand_dims(tactile_grid,2), np.expand_dims(tactile_content,2)], 2)
+        tactile_axes = np.array(Image.open(f"{tactile_path[0]}_axes.{tactile_path[1]}").convert(mode="L"))
+        tactile_grid = np.array(Image.open(f"{tactile_path[0]}_grids.{tactile_path[1]}").convert(mode="L"))
+        tactile_content = np.array(Image.open(f"{tactile_path[0]}_content.{tactile_path[1]}").convert(mode="L"))
+        tactile = np.concatenate([np.expand_dims(tactile_axes,2), np.expand_dims(tactile_grid,2), np.expand_dims(tactile_content,2)], 2)
 
 
-            if self.mode=='train' and self.aug:
-                augmented = self.aug_t(image=np.array(source), mask=tactile)
-                aug_img_pil = Image.fromarray(augmented['image'])
-                aug_msk_pil = Image.fromarray(augmented['mask'])
-                # apply pixel-wise transformation
-                img_tensor = self.preprocess(aug_img_pil)
-                mask_tensor = transforms.ToTensor()(aug_msk_pil)
+        if self.mode=='train' and self.aug:
+            augmented = self.aug_t(image=np.array(source), mask=tactile)
+            aug_img_pil = Image.fromarray(augmented['image'])
+            aug_msk_pil = Image.fromarray(augmented['mask'])
+            # apply pixel-wise transformation
+            img_tensor = self.preprocess(aug_img_pil)
+            mask_tensor = transforms.ToTensor()(aug_msk_pil)
 
-            else:
-                img_tensor = self.preprocess(source)
-                mask_tensor = transforms.ToTensor()(tactile)
-
-            return img_tensor, mask_tensor
         else:
-            if self.mode=='train' and self.aug:
-                augmented = self.aug_t(image=np.array(source))
-                aug_img_pil = Image.fromarray(augmented['image'])
-                # apply pixel-wise transformation
-                img_tensor = self.preprocess(aug_img_pil)
+            img_tensor = self.preprocess(source)
+            mask_tensor = transforms.ToTensor()(tactile)
 
-            else:
-                img_tensor = self.preprocess(source)
-
-            return (img_tensor,)
+        return img_tensor, mask_tensor
+        
     def __len__(self):
         return len(self.images)
         

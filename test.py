@@ -19,6 +19,7 @@ from generators.generators import create_gen
 from datasets.datasets import get_dataset
 from util import mkdir
 
+
 class Opt:
      def __init__(self, dictionary):
         for k, v in dictionary.items():
