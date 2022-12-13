@@ -5,19 +5,18 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 import torch
 import cv2
-import albumentations
-import albumentations.augmentations as A
+import albumentations as A
 
 
 
 class PairedDataset(Dataset):
-    def __init__(self, img_dir, size=256, mode='train', aug=False):
+    def __init__(self, img_dir, size=256, mode='train', aug=False, target='rgb'):
         super(PairedDataset, self).__init__()
         self.img_dir = img_dir
         self.size = size
         self.mode = mode
         self.aug = aug
-        
+        self.target = target
 
         images = []
         for root, _ , fnames in sorted(os.walk(self.img_dir)):
@@ -29,14 +28,15 @@ class PairedDataset(Dataset):
         self.images = images
 
         if aug:
-            self.aug_t = albumentations.Compose([
-                            A.transforms.HorizontalFlip(p=0.5),
-                            A.geometric.transforms.ShiftScaleRotate(shift_limit=0.1,
+            mask_value = (255,255,255) if self.target=='rgb' else (0,0,0)
+            self.aug_t = A.Compose([
+                            A.HorizontalFlip(p=0.5),
+                            A.ShiftScaleRotate(shift_limit=0.1,
                                                           scale_limit=0.2,
                                                           rotate_limit=15,
                                                           border_mode=cv2.BORDER_CONSTANT,
                                                           value=(255,255,255),
-                                                          mask_value=(0,0,0),
+                                                          mask_value=mask_value,
                                                           p=0.5),])
 
     @staticmethod
@@ -60,11 +60,19 @@ class PairedDataset(Dataset):
         source = Image.open(self.images[i]).convert('RGB')
         tactile_path = self.images[i].replace("source", "tactile").replace("s_", "t_").replace(".png",".tiff").rsplit(".",1)
 
-        tactile_axes = np.array(Image.open(f"{tactile_path[0]}_axes.{tactile_path[1]}").convert(mode="L"))
-        tactile_grid = np.array(Image.open(f"{tactile_path[0]}_grids.{tactile_path[1]}").convert(mode="L"))
-        tactile_content = np.array(Image.open(f"{tactile_path[0]}_content.{tactile_path[1]}").convert(mode="L"))
-        tactile = np.concatenate([np.expand_dims(tactile_axes,2), np.expand_dims(tactile_grid,2), np.expand_dims(tactile_content,2)], 2)
-
+        if self.target == 'rgb':
+            try:
+                tactile = np.array(Image.open(tactile_path).convert('RGB'))
+            except FileNotFoundError:
+                print(f"File {tactile_path} does not exist")
+        else:
+            try:
+                tactile_axes = np.array(Image.open(f"{tactile_path[0]}_axes.{tactile_path[1]}").convert(mode="L"))
+                tactile_grid = np.array(Image.open(f"{tactile_path[0]}_grids.{tactile_path[1]}").convert(mode="L"))
+                tactile_content = np.array(Image.open(f"{tactile_path[0]}_content.{tactile_path[1]}").convert(mode="L"))
+                tactile = np.concatenate([np.expand_dims(tactile_axes,2), np.expand_dims(tactile_grid,2), np.expand_dims(tactile_content,2)], 2)
+            except FileNotFoundError:
+                print(f"At least one missing component at {tactile_path}")
 
         if self.mode=='train' and self.aug:
             augmented = self.aug_t(image=np.array(source), mask=tactile)

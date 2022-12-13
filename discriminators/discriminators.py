@@ -1,15 +1,10 @@
 import torch
 import torch.nn as nn
-
-from discriminators.GlobalDiscriminator import GlobalDiscriminator
 from discriminators.PatchDiscriminator import PatchDiscriminator
 
-def create_disc(name, in_nc, out_nc):
-    if name.lower() == "global":
-        netD = GlobalDiscriminator(in_nc, out_nc)
-        
-    elif name.lower() == "patch":
-        netD = PatchDiscriminator(in_nc, out_nc)
+def create_disc(name, in_nc, out_nc, ndf, use_sigmoid, return_filter):
+    if name.lower() == "patch":
+        netD = PatchDiscriminator(in_nc, out_nc, ndf=ndf, use_sigmoid=use_sigmoid, return_filters=return_filter)
     else:
         msg = name + " not a valid model"
         raise NameError(msg)  

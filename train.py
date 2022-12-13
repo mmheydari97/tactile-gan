@@ -36,7 +36,7 @@ class Train_Pix2Pix:
         self.netG.to(self.device)
         init_weights(self.netG)
 
-        self.netD = create_disc(opt.disc, opt.input_dim, opt.output_dim)
+        self.netD = create_disc("Patch", opt.input_dim, opt.output_dim)
         self.netD.to(self.device)
         init_weights(self.netD)
 
@@ -77,8 +77,8 @@ class Train_Pix2Pix:
 
         # load vgg if we want to use perceptual loss
 
-        for i in range(opt.total_iters):
-            epoch = i + opt.epoch_count
+        for i in range(opt.total_epochs):
+            epoch = i + opt.initial_epoch
             #monitor each minibatch loss
             lossdlist = []
             lossglist = []
@@ -163,7 +163,7 @@ class Train_Pix2Pix:
             print(f"\tloss functions => D:{mean(lossdlist):.5f}, G:{mean(lossglist):.5f}, L1:{mean(lossl1list):.5f}, gp:{mean(lossgpdlist):.5f}, per:{mean(lossperlist):.5f}")
             print(f'\tlearing rate: {lr:.5f}')
             print(f"\ttook {diff:.2f} seconds")
-            print(f"\tapproximately {diff*(opt.total_iters - epoch):.2f} seconds left")
+            print(f"\tapproximately {diff*(opt.total_epochs - epoch):.2f} seconds left")
 
             self.gen_loss.append(mean(lossglist))
             self.disc_loss.append(mean(lossdlist))
@@ -176,7 +176,7 @@ class Train_Pix2Pix:
 
     @staticmethod
     def get_scheduler(optimizer):
-        milestone = np.int16(np.linspace(opt.iter_constant, opt.total_iters, 11)[:-1])
+        milestone = np.int16(np.linspace(opt.epoch_constant, opt.total_epochs, 11)[:-1])
         scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=list(milestone), gamma=0.8)
         return scheduler
     
@@ -245,9 +245,9 @@ parser.add_argument("--data", default="./data", help="dataset directory")
 parser.add_argument("--batch_size", type=int, default=4, help="training batch size")
 parser.add_argument("--input_dim", type=int, default=3, help="input depth size")
 parser.add_argument("--output_dim", type=int, default=3, help="output depth size")
-parser.add_argument("--epoch_count", type=int, default=1, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
-parser.add_argument("--total_iters", type=int, default=135, help="total epochs we're training for")
-parser.add_argument("--iter_constant", type=int, default=25, help="how many epochs we keep the learning rate constant")
+parser.add_argument("--initial_epoch", type=int, default=1, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
+parser.add_argument("--total_epochs", type=int, default=135, help="total epochs we're training for")
+parser.add_argument("--epoch_constant", type=int, default=25, help="how many epochs we keep the learning rate constant")
 parser.add_argument("--lr", type=float, default=0.002, help="learning rate")
 parser.add_argument("--label_smoothing", default=True, action='store_true', help="if written, we will not use one sided label smoothing")
 parser.add_argument("--beta1", type=float, default=0.01, help="beta1 for our Adam optimizer")
@@ -258,9 +258,9 @@ parser.add_argument('--lambda_gp', type=float, default=0.1, help="gradient penal
 parser.add_argument("--lambda_per", type=float, default=0.2, help="perceptual loss coefficient")
 parser.add_argument('--w_per', nargs=4, type=float, default=[0,.1,.3,.6], help='perceptual weights')
 parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet"], help="generator architecture")
-parser.add_argument("--disc", default="Patch", choices=["Global", "Patch"], help="discriminator architecture")
 parser.add_argument("--loss", default="ls", choices=["ls", "ce", "w", "hinge"], help="loss function for ganloss")
 parser.add_argument("--no_aug", default=False, action='store_true', help="if written, we won't augment the dataset")
+parser.add_argument("--target", default="rgb", choices=["ch", "rgb"], help="target image format")
 parser.add_argument("--folder_save", default="pix2obj", help="where we want to save the model to")
 parser.add_argument("--folder_load", default="pix2obj", help="where we want to load the model from")
 parser.add_argument("--checkpoint_interval", type=int, default=-1, help="interval between model checkpoints")
@@ -271,7 +271,7 @@ opt = parser.parse_args()
 
  
 photo_path_train = os.path.join(opt.data, "train", "source")
-train_set = get_dataset(photo_path_train, opt, mode='train')
+train_set = get_dataset(photo_path_train, opt, mode='train', target=opt.target)
 
 experiment = Train_Pix2Pix(opt,train_set)
 
