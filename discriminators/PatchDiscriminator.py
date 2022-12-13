@@ -3,12 +3,12 @@ import torch.nn as nn
 
 
 class PatchDiscriminator(nn.Module):
-    def __init__(self, in_channels=3, out_channel=3, ndf=64, use_sigmoid=True, return_filters=True):
+    def __init__(self, in_channels=3, out_channel=3, num_filter=64, return_filters=True, activation=True):
         super(PatchDiscriminator, self).__init__()
         self.return_filters = return_filters
         self.kw = 3
         self.padw = 0
-
+        
         def discriminator_block(self, in_filters, out_filters, stride, normalization=True, bias=False):
             """Returns downsampling layers of each discriminator block"""
             layers = [nn.Conv2d(in_filters, out_filters, kernel_size=self.kw, stride=stride, padding=self.padw, bias=bias)]
@@ -20,13 +20,13 @@ class PatchDiscriminator(nn.Module):
             return layers
 
         self.model = [
-            *discriminator_block(self, in_channels + out_channel, ndf, stride=2, normalization=False, bias=True),
-            *discriminator_block(self, ndf, ndf*2, stride=2),
-            *discriminator_block(self, ndf*2, ndf*4, stride=1),
-            *discriminator_block(self, ndf*4, ndf*8, stride=1),
-            nn.Conv2d(ndf*8, 1, kernel_size=self.kw, stride=1, padding=self.padw),
+            *discriminator_block(self, in_channels + out_channel, num_filter, stride=2, normalization=False, bias=True),
+            *discriminator_block(self, num_filter, num_filter*2, stride=2),
+            *discriminator_block(self, num_filter*2, num_filter*4, stride=1),
+            *discriminator_block(self, num_filter*4, num_filter*8, stride=1),
+            nn.Conv2d(num_filter*8, 1, kernel_size=self.kw, stride=1, padding=self.padw),
         ]
-        if use_sigmoid:
+        if activation:
             self.model.append(nn.Sigmoid())
         self.model = nn.Sequential(*self.model)
 

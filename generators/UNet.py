@@ -53,7 +53,7 @@ class DeconvUp(nn.Module):
 
     
 class UNet(nn.Module):
-    def __init__(self, input_dim=3, output_dim=1, num_filter=64, activation=True):
+    def __init__(self, input_dim=3, output_dim=3, num_filter=64, activation=True):
         super(UNet, self).__init__()
         #256x256x3
         self.conv1 = ConvDown(in_size = input_dim, out_size=num_filter) #128x128x64

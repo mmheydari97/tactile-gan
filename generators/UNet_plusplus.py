@@ -23,7 +23,7 @@ class ConvBlock(nn.Module):
     
 
 class UNet_plusplus(nn.Module):
-    def __init__(self, input_dim=3, output_dim=1, num_filter=64, activation=True):
+    def __init__(self, input_dim=3, output_dim=3, num_filter=64, activation=True):
         super(UNet_plusplus, self).__init__()
         self.Upsample = nn.Upsample(scale_factor=2)
         self.Downsample = nn.AvgPool2d(kernel_size=2, stride=2)

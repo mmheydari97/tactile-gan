@@ -4,16 +4,15 @@ from generators.UNet import UNet
 from generators.UNet_plusplus import UNet_plusplus
 
 
-def create_gen(name, in_nc, out_nc, multigpu=False):
+def create_gen(name, in_nc, out_nc, num_filter, activation=True, multigpu=False):
     if name.lower() == "unet":
-        netG = UNet(in_channels=in_nc, out_channels=out_nc)
+        netG = UNet(in_channels=in_nc, out_channels=out_nc, num_filter=num_filter, activation=activation)
     
     elif name.lower() == "unet++": 
-        netG = UNet_plusplus(in_channels=in_nc, out_channels=out_nc)
+        netG = UNet_plusplus(in_channels=in_nc, out_channels=out_nc, num_filter=opt.nf, activation=activation)
    
     else:
-        msg = name + " not a valid model"
-        raise NameError(msg)  
+        raise NameError(f"{name} not a valid model")  
         
     #if we are using multiple GPU's:
     if multigpu and torch.cuda.device_count() > 1:
