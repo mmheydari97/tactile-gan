@@ -62,7 +62,7 @@ class PairedDataset(Dataset):
 
         if self.target == 'rgb':
             try:
-                tactile = np.array(Image.open(tactile_path).convert('RGB'))
+                tactile = np.array(Image.open(f"{tactile_path[0]}.{tactile_path[1]}").convert('RGB'))
             except FileNotFoundError:
                 print(f"File {tactile_path} does not exist")
         else:
@@ -90,6 +90,3 @@ class PairedDataset(Dataset):
         
     def __len__(self):
         return len(self.images)
-        
-        
-        

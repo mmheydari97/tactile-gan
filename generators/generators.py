@@ -6,10 +6,10 @@ from generators.UNet_plusplus import UNet_plusplus
 
 def create_gen(name, in_nc, out_nc, num_filter, activation=True, multigpu=False):
     if name.lower() == "unet":
-        netG = UNet(in_channels=in_nc, out_channels=out_nc, num_filter=num_filter, activation=activation)
+        netG = UNet(input_dim=in_nc, output_dim=out_nc, num_filter=num_filter, activation=activation)
     
     elif name.lower() == "unet++": 
-        netG = UNet_plusplus(in_channels=in_nc, out_channels=out_nc, num_filter=opt.nf, activation=activation)
+        netG = UNet_plusplus(input_dim=in_nc, output_dim=out_nc, num_filter=num_filter, activation=activation)
    
     else:
         raise NameError(f"{name} not a valid model")  

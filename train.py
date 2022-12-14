@@ -28,9 +28,9 @@ class Train_GAN:
         #load in the datasets
         self.dataset = DataLoader(dataset=traindataset, batch_size=opt.batch_size, shuffle=True, num_workers=opt.threads)
 
-        self.device = torch.device("cuda:0" if not opt.cuda else "cpu")
+        self.device = torch.device("cuda:0")
         self.activation = True if opt.loss != "ce" else False
-        self.return_filter = True if opt.v == 2 else False
+        self.return_filter = True if opt.version == 2 else False
 
         #create generator and discriminator
         self.netG = create_gen(opt.gen, opt.input_dim, opt.output_dim, opt.nf, self.activation)
@@ -44,7 +44,7 @@ class Train_GAN:
         self.gan_loss = GANLoss(gan_mode=opt.loss, label_smoothing=not opt.no_label_smoothing, tensor=torch.cuda.FloatTensor)
           
         if opt.lambda_per != 0:
-            if opt.v == 1:
+            if opt.version == 1:
                 self.perceptual_loss = VGGPerceptualLoss(resize=True).forward
             else:
                 self.perceptual_loss = pan_loss
@@ -95,7 +95,7 @@ class Train_GAN:
             t1 = time.time()
             
             print("==training epoch ",epoch)
-            for _, batch in enumerate(tqdm(self.dataset)):
+            for j, batch in enumerate(tqdm(self.dataset)):
                     
                 real_A, real_B = batch[0].to(self.device), batch[1].to(self.device) #load in a batch of data
 
@@ -122,14 +122,14 @@ class Train_GAN:
                 regularize = (opt.reg_every!=0) and (epoch % opt.reg_every == 0) and (opt.lambda_gp!=0)
                 if regularize:
                     self.optimizer_D.zero_grad()
-                    gp_loss = gradient_penalty(self.netD, real_A, real_B, fake_B, self.device, opt.v, lambda_gp=opt.lambda_gp)
+                    gp_loss = gradient_penalty(self.netD, real_A, real_B, fake_B, self.device, opt.version, lambda_gp=opt.lambda_gp)
                     loss_D += gp_loss
                     lossgplist.append(gp_loss.item())
                 else:
                     lossgplist.append(0)
 
                 #now that we have the full loss we back propogate
-                loss_D.backward()
+                loss_D.backward(retain_graph=True if opt.lambda_gp != 0 else False)
                 self.optimizer_D.step()
 
                 # Optimize G #####################################
@@ -145,7 +145,7 @@ class Train_GAN:
 
                 loss_G = loss_G_GAN + loss_G_L1 * opt.lambda_a
                 if opt.lambda_per != 0:
-                    if opt.v == 1:
+                    if opt.version == 1:
                         features_fake = fake_B
                         features_real = real_A
                     else:
@@ -234,7 +234,6 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=0.002, help="learning rate")
     parser.add_argument("--no_label_smoothing", default=False, action='store_true', help="if written, we will not use one sided label smoothing")
     parser.add_argument("--beta1", type=float, default=0.01, help="beta1 for our Adam optimizer")
-    parser.add_argument("--no_cuda", default=True, action='store_false', help="if written, we will not use gpu accelerated training")
     parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
     parser.add_argument("--lambda_a", type=float, default=5, help="L1 loss coefficient")
     parser.add_argument('--lambda_gp', type=float, default=0.1, help="gradient penalty coefficient")
@@ -255,7 +254,7 @@ if __name__ == "__main__":
     opt = parser.parse_args()
 
     photo_path_train = os.path.join(opt.data, "train", "source")
-    train_set = get_dataset(photo_path_train, opt, mode='train', target=opt.target)
+    train_set = get_dataset(photo_path_train, opt, mode='train')
 
     experiment = Train_GAN(opt,train_set)
 

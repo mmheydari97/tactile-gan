@@ -96,4 +96,4 @@ class UNet(nn.Module):
         d8 = self.deconv8((torch.cat([d7, c1], 1)))
         
         out = self.downfeature(d8)
-        return 
+        return out

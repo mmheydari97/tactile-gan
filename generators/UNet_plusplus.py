@@ -1,8 +1,20 @@
 import torch
 import torch.nn as nn
-from UNet import FeatureMapBlock
 
-    
+
+class FeatureMapBlock(nn.Module):
+  
+    def __init__(self, input_channels, output_channels, activation=True):
+        super(FeatureMapBlock, self).__init__()
+        self.conv = nn.Conv2d(input_channels, output_channels, kernel_size=1)
+        self.activation = activation
+
+    def forward(self, x):
+        x = self.conv(x)
+        if self.activation:
+            x = nn.Tanh()(x) 
+        return x
+
 class ConvBlock(nn.Module):
     def __init__(self, in_size, out_size, kernel=3,stride=1, padding=1):
         super(ConvBlock,self).__init__()

@@ -86,10 +86,9 @@ def gradient_penalty(disc, real_img, real_mask, fake_mask, device, ver=2, type='
             interpolates.requires_grad_(True)
             pred = disc(real_img, interpolates)
             gradients = torch.autograd.grad(outputs=pred, inputs=interpolates,
-                                            grad_outputs=torch.ones(pred.size()).to(device),
+                                            grad_outputs=torch.ones_like(pred).to(device),
                                             create_graph=True,
-                                            retain_graph=True,
-                                            only_inputs=True)
+                                            retain_graph=True)
             gradients = gradients[0].view(real_mask.size(0),-1)                
             res = (((gradients+1e-16).norm(2, dim=1) - constant) ** 2).mean() * lambda_gp
             
