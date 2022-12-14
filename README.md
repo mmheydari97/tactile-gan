@@ -2,7 +2,6 @@
 
 ## Table of contents
 - [File Structure](#file-structure)
-- [Dataset Generation](#dataset-generation)
 - [Training](#training)
 - [Test](#test)
 - [Code References](#code-references)
