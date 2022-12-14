@@ -118,21 +118,19 @@ class Train_GAN:
                 loss_D = (loss_D_fake + loss_D_real)/2
                 
                 lossdlist.append(loss_D.item())
-                
-                #now that we have the full loss we back propogate
-                loss_D.backward()
-                self.optimizer_D.step()
 
                 regularize = (opt.reg_every!=0) and (epoch % opt.reg_every == 0) and (opt.lambda_gp!=0)
                 if regularize:
                     self.optimizer_D.zero_grad()
                     gp_loss = gradient_penalty(self.netD, real_A, real_B, fake_B, self.device, opt.v, lambda_gp=opt.lambda_gp)
-                    gp_loss.backward(retain_graph=True)
-                    self.optimizer_D.step()
+                    loss_D += gp_loss
                     lossgplist.append(gp_loss.item())
                 else:
                     lossgplist.append(0)
 
+                #now that we have the full loss we back propogate
+                loss_D.backward()
+                self.optimizer_D.step()
 
                 # Optimize G #####################################
                 set_requires_grad(nets=self.netD, requires_grad=False) #dont want the discriminator to update weights this round
