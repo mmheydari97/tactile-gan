@@ -244,7 +244,7 @@ if __name__ == "__main__":
     parser.add_argument("--loss", default="ls", choices=["ls", "ce", "w", "hinge"], help="loss function for ganloss")
     parser.add_argument("--no_aug", default=False, action='store_true', help="if written, we won't augment the dataset")
     parser.add_argument("--target", default="rgb", choices=["ch", "rgb"], help="target image format")
-    parser.add_argument("-v", "--version", default=1, choices=[1, 2], help="version of the tactile GAN")
+    parser.add_argument("-v", "--version", type=int, default=1, choices=[1, 2], help="version of the tactile GAN")
     parser.add_argument("--folder_save", default="pix2obj", help="where we want to save the model to")
     parser.add_argument("--folder_load", default="pix2obj", help="where we want to load the model from")
     parser.add_argument("--checkpoint_interval", type=int, default=-1, help="interval between model checkpoints")
