@@ -33,7 +33,7 @@ def load_opt(path):
     return opt
 
 def load_model(model_path, opt,device):
-    gen = create_gen(opt.gen,opt.input_dim,opt.output_dim,multigpu=False)
+    gen = create_gen(opt.gen, opt.input_dim, opt.output_dim, opt.nf, multigpu=False)
     gen.to(device)
     
     checkpoint = torch.load(model_path)
@@ -97,16 +97,16 @@ def concat_images(*photos, mode="h"):
     return res
 
 def save_plot(loss_dict, opt):
-	x = np.array(range(opt.epoch_count, opt.epoch_count+opt.total_iters))
+	x = np.array(range(opt.initial_epoch, opt.initial_epoch+opt.total_epochs))
 	legends = loss_dict.keys()
 	for y in loss_dict.values():
 		plt.plot(x,y)
 	plt.legend(legends)
 	plt.xlabel("iteration")
 	plt.ylabel("loss")
-	plt.savefig(os.path.join(os.getcwd(),"models",opt.folder_load,"loss.png"))
+	plt.savefig(os.path.join(os.getcwd(),"models",opt.folder_save,"loss.png"))
 
-def eval_model(model, dataset, path):
+def eval_model(model, dataset):
     jaccard = []
     dice = []
     accuracy = []
@@ -146,7 +146,7 @@ def eval_model(model, dataset, path):
     a = f"Pixel Accuracy => min:{np.min(accuracy)}, max:{np.max(accuracy)}, avg:{np.mean(accuracy)}, std:{np.std(accuracy)}\n"
     d = f"Dice Coeff => min:{np.min(dice)}, max:{np.max(dice)}, avg:{np.mean(dice)}, std:{np.std(dice)}\n"
     j = f"Jaccard Index => min:{np.min(jaccard)}, max:{np.max(jaccard)}, avg:{np.mean(jaccard)}, std:{np.std(jaccard)}\n"
-    with open(os.path.join(os.getcwd(),"models",opt.folder_load,"eval.txt"), 'w') as f:
+    with open(os.path.join(os.getcwd(),"models",opt.folder_save,"eval.txt"), 'w') as f:
         f.writelines([a,d,j])
     print (f"Acc: {np.mean(accuracy)}, IoU: {np.mean(jaccard)}, Dice: {np.mean(dice)}")
 
@@ -160,31 +160,21 @@ def save_images(model, dataset, path):
         b = real_B[0]
         out = out[0]
         
-        # numerical log
-        # np.savetxt(os.path.join(path,f"e_{i+1}.txt"), a[2].numpy())
-        # print(f"Out => min:{b.numpy().min()} max:{b.numpy().max()} avg:{b.numpy().mean()} std:{b.numpy().std()}")
-        # print(f"Fake => min:{real_B[0].numpy().min()} max:{real_B[0].numpy().max()} avg:{real_B[0].numpy().mean()} std:{real_B[0].numpy().std()}")
+        if opt.target == 'rgb':
+            b_img = ToPILImage()(b)
+            out_img = ToPILImage()(out)
         
-        # visual log
-        # plt.figure(figsize=(10,7))
-        # sns.distplot(b[0].numpy(),label="ch_0")
-        # sns.distplot(b[1].numpy(),label="ch_1")
-        # sns.distplot(b[2].numpy(),label="ch_2")
-        # plt.legend()
-        # plt.savefig(os.path.join(path,f"e_pdf_{i+1}.png"))
-        
-        b_img = visualize(b)
-        out_img = visualize(out)
-        
+        else:
+            b_img = visualize(b)
+            out_img = visualize(out)
+            
         out_img.save(os.path.join(path,f"o_{i+1}.png"))
         concat_images(ToPILImage()(a), b_img, out_img).save(os.path.join(path,f"sgt_{i+1}.png"))
-        # save_image(concat_images(a, b_img, out_img), os.path.join(path,f"e_{i+1}.png"))
-        # save_image(torch.cat((b_elements, out_elements), 1), os.path.join(path,f"e_{i+1}_elements.png")) 
-        
-        b_elements = concat_images(ToPILImage()(b[0]), ToPILImage()(b[1]), ToPILImage()(b[2]))
-        out_elements = concat_images(ToPILImage()(out[0]), ToPILImage()(out[1]), ToPILImage()(out[2]))
-        concat_images(b_elements,out_elements, mode="v").save(os.path.join(path,f"elm_{i+1}.png"))
-        # print(f"file x_{i+1}.png saved.")
+
+        if opt.target != 'rgb':        
+            b_elements = concat_images(ToPILImage()(b[0]), ToPILImage()(b[1]), ToPILImage()(b[2]))
+            out_elements = concat_images(ToPILImage()(out[0]), ToPILImage()(out[1]), ToPILImage()(out[2]))
+            concat_images(b_elements,out_elements, mode="v").save(os.path.join(path,f"elm_{i+1}.png"))
 
 
 if __name__=='__main__':
@@ -196,20 +186,21 @@ if __name__=='__main__':
     opt = load_opt(opt_path)
     device = torch.device("cuda:0")
 
-    model_path = os.path.join(os.getcwd(),"models",opt.folder_load,"final_model.pth")
+    model_path = os.path.join(os.getcwd(),"models",opt.folder_save,"final_model.pth")
     gen = load_model(model_path,opt,device)
-
-    
 
     photo_path_test= os.path.join(os.getcwd(),opt.data,"test","source")
     dataset = load_data(photo_path_test,opt, shuffle=False)
 
-    loss_path = os.path.join(os.getcwd(), "models", opt.folder_load)
+    loss_path = os.path.join(os.getcwd(), "models", opt.folder_save)
     losses = load_arrays(loss_path)
     save_plot(losses, opt)
 
     output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_save)
     mkdir(output_path)
-    eval_model(gen, dataset,output_path)
+    
+    if opt.target != 'rgb':
+        eval_model(gen, dataset)
+
     save_images(gen, dataset,output_path)
 
