@@ -68,7 +68,7 @@ class Train_GAN:
 
 
         if opt.continue_training:
-            checkpoint = torch.load(os.path.join(os.getcwd(),"models",opt.folder_load,"final_model.pth"))
+            checkpoint = torch.load(os.path.join(f"{opt.data.rsplit('/',1)[0]}/models",opt.folder_load,"final_model.pth"))
 
             self.netG.load_state_dict(checkpoint["gen"])
             self.optimizer_G.load_state_dict(checkpoint["optimizerG_state_dict"])
@@ -258,10 +258,10 @@ if __name__ == "__main__":
 
     experiment = Train_GAN(opt,train_set)
 
-    checkpoint_path = os.path.join(os.getcwd(),"checkpoints",opt.folder_save)
+    checkpoint_path = os.path.join(f"{opt.data.rsplit('/',1)[0]}/checkpoints",opt.folder_save)
     mkdir(checkpoint_path)
 
-    save_path = os.path.join(os.getcwd(),"models",opt.folder_save)
+    save_path = os.path.join(f"{opt.data.rsplit('/',1)[0]}/models",opt.folder_save)
     mkdir(save_path)
 
     model_path = os.path.join(save_path,"final_model.pth")
