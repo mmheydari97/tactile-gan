@@ -67,7 +67,7 @@ Having the dataset prepared we can train a model by running `python train.py`. T
 - `--initial-epoch`: This argument sets starting epoch counter, useful if we're loading a half trained model.
 - `--total_epochs`: This argument sets total number of epochs we're training the network. By default the code runs for 125 iterations.
 - `--epoch_constant`: This argument sets the number of epochs in which we keep the learning rate constant. By default it would be 25 starting epochs without learning rate decay.
-- `--lr`: This argument sets staring learning rate which is 0.002 by default.
+- `--lr`: This argument sets starting learning rate which is 0.002 by default.
 - `--no-label_smoothing`: This argument disables one-sided label smoothing which is a technique to regulate training GANs.
 - `--beta1`: This argument sets beta1 for Adam optimizer which is 0.01 by default.
 - `--threads`: This argument sets the number of cpu threads for loading the dataset. By default it's set to 8.
@@ -78,14 +78,14 @@ Having the dataset prepared we can train a model by running `python train.py`. T
 - `--gen`: This argument sets the generator architecture. The options are UNet, and UNet++ which is the default value.
 - `--nf`: This argument sets the base number of filters of the generator. It implicitly controls how big the generator should be.
 - `--loss`: This argument sets the loss function for GAN loss from Mean Squared Error, Binary Cross-Entropy or Wasserstein loss or hinge loss and we use the first option by default.
-- `--no_aug`: This argument disables data augmention on the dataset when training the network.
+- `--no_aug`: This argument disables data augmentation on the dataset when training the network.
 - `--target`: This argument determines if the model should work with rgb tactile generation (task 1) or channel-wise tactile generation (task 2). It's set to the first option by default.
 - `--version`: This argument sets the version of tactile GAN model. There are 2 models with slightly different loss terms. The second model which is the default, performs slightly better, but slightly more time consuming.
 - `--folder_save`: This argument sets the folder where we want to save the model. By default the model will be stored at `./models/pix2obj`.
 - `--folder_load`: This argument sets the folder where we want to load the model from when testing. By default the model will be fetched from `./models/pix2obj`.
-- `--checkpoint_interval`: This argument sets the number of epoches elapsed to save a checkpoint at `./checkpoints/pix2pix` by default it's set to -1 and we don't save intermediate checkpoints.
-- `--continue_training`: If we use this argument the script load the pretrained model existing in load folder specified above and continues training it.
-- `reg_every`: This argument controls how frequently the gradient penalty regularizer should be applied to the discriminator.
+- `--checkpoint_interval`: This argument sets the number of epochs elapsed to save a checkpoint at `./checkpoints/pix2pix` by default it's set to -1 and we don't save intermediate checkpoints.
+- `--continue_training`: If we use this argument the script loads the pretrained model existing in load folder specified above and continues training it.
+- `reg_every`: This argument controls how frequently the gradient penalty regularization should be applied to the discriminator.
 
 **_NOTE:_** The model from running the script with default input arguments is already stored and provided so we don't have to run it again.
 
