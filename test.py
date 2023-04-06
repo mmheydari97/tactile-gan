@@ -17,7 +17,7 @@ from torchvision.utils import save_image
 from torchvision.transforms import ToTensor, ToPILImage
 from generators.generators import create_gen
 from datasets.datasets import get_dataset
-from util import mkdir
+from util import mkdir, otsu_threshold
 
 
 class Opt:
@@ -107,11 +107,12 @@ def save_plot(loss_dict, opt):
 	plt.savefig(os.path.join(os.getcwd(),"models",opt.folder_save,"loss.png"))
 
 def eval_pair(real, out):
-    o = out.detach().cpu().numpy().flatten()
-    r = real.detach().cpu().numpy().flatten()
-    threshold = (np.min(r)+np.max(r))/2
-    o_bin = np.where(o>= threshold, 1, 0)
-    r_bin = np.where(r>= threshold, 1, 0)
+    o = out.detach().cpu().numpy()
+    r = real.detach().cpu().numpy()
+    # threshold = [otsu_threshold(ch) for ch in r]
+    threshold = [0.5 for _ in range(r.shape[0])]
+    o_bin = np.array([o[i]<threshold[i] for i in range(o.shape[0])]).flatten()
+    r_bin = np.array([r[i]<threshold[i] for i in range(r.shape[0])]).flatten()
 
     accuracy = np.sum(o_bin==r_bin)/o_bin.shape[0]
 

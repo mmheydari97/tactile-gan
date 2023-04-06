@@ -142,3 +142,25 @@ class VGGPerceptualLoss(torch.nn.Module):
                 gram_y = act_y @ act_y.permute(0, 2, 1)
                 loss += torch.nn.functional.l1_loss(gram_x, gram_y)*weights[i]
         return loss
+        
+        
+def otsu_threshold(image):
+    hist, _ = np.histogram(image, bins=np.linspace(0, 1, 256))
+    hist_norm = hist.astype('float') / np.sum(hist)
+    cumsum = np.cumsum(hist_norm)
+    cummean = np.cumsum(hist_norm * np.arange(255) / 255.0)
+    global_mean = np.sum(hist_norm * np.arange(255) / 255.0)
+    variances = np.zeros(255)
+    for t in range(255):
+        w0 = cumsum[t]
+        w1 = 1.0 - w0
+        if w0 == 0.0 or w1 == 0.0:
+            continue
+        mu0 = cummean[t] / w0
+        mu1 = (global_mean - cummean[t]) / w1
+        variances[t] = w0 * w1 * (mu0 - mu1) ** 2
+
+    threshold = np.argmax(variances)
+    threshold /= 255.0
+
+    return threshold
