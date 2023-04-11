@@ -125,18 +125,26 @@ def eval_pair(real, out):
     return({"accuracy":accuracy, "dice":dice, "jaccard": jaccard})
    
 
-def print_evaluation(accuracy, dice, jaccard, opt):
+def print_evaluation(accuracy, dice, jaccard, output_path):
     a = f"Pixel Accuracy => min:{np.min(accuracy)}, max:{np.max(accuracy)}, avg:{np.mean(accuracy)}, std:{np.std(accuracy)}\n"
     d = f"Dice Coeff => min:{np.min(dice)}, max:{np.max(dice)}, avg:{np.mean(dice)}, std:{np.std(dice)}\n"
     j = f"Jaccard Index => min:{np.min(jaccard)}, max:{np.max(jaccard)}, avg:{np.mean(jaccard)}, std:{np.std(jaccard)}\n"
-    with open(os.path.join(os.getcwd(),"models",opt.folder_save,"eval.txt"), 'w') as f:
+    with open(os.path.join(output_path,"eval.txt"), 'w') as f:
         f.writelines([a,d,j])
     print (f"Acc: {np.mean(accuracy)}, IoU: {np.mean(jaccard)}, Dice: {np.mean(dice)}")
 
-def test_model(model, dataset, path, evaluation=False):
+def test_model(model, dataset, out_path, evaluation=False):
     accuracy = []
     jaccard = []
     dice = []
+
+    if not os.path.exists(os.path.join(out_path, "out")):
+        os.makedirs(os.path.join(out_path, "out"))
+    if not os.path.exists(os.path.join(out_path, "sgt")):
+        os.makedirs(os.path.join(out_path, "sgt"))
+    if not os.path.exists(os.path.join(out_path, "elm")):
+        os.makedirs(os.path.join(out_path, "elm"))
+        
 
     for i, batch in enumerate(tqdm(dataset)):
         real_A, real_B = batch[0], batch[1]
@@ -161,13 +169,13 @@ def test_model(model, dataset, path, evaluation=False):
             b_img = visualize(b)
             out_img = visualize(out)
             
-        out_img.save(os.path.join(path,f"o_{i+1}.png"))
-        concat_images(ToPILImage()(a), b_img, out_img).save(os.path.join(path,f"sgt_{i+1}.png"))
+        out_img.save(os.path.join(out_path, "out", f"{i+1}.png"))
+        concat_images(ToPILImage()(a), b_img, out_img).save(os.path.join(out_path, "sgt", f"{i+1}.png"))
 
         if opt.target != 'rgb':        
             b_elements = concat_images(ToPILImage()(b[0]), ToPILImage()(b[1]), ToPILImage()(b[2]))
             out_elements = concat_images(ToPILImage()(out[0]), ToPILImage()(out[1]), ToPILImage()(out[2]))
-            concat_images(b_elements,out_elements, mode="v").save(os.path.join(path,f"elm_{i+1}.png"))
+            concat_images(b_elements,out_elements, mode="v").save(os.path.join(out_path, "elm", f"{i+1}.png"))
     return accuracy, dice, jaccard
 
 if __name__=='__main__':
@@ -194,4 +202,4 @@ if __name__=='__main__':
     
     accuracy, dice, jaccard = test_model(gen, dataset, output_path, evaluation=True)
     if len(accuracy)>0:
-        print_evaluation(accuracy, dice, jaccard, opt)
+        print_evaluation(accuracy, dice, jaccard, output_path)
