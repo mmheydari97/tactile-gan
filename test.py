@@ -7,6 +7,7 @@ import matplotlib.image
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
+from scipy.stats import norm
 from PIL import Image, ImageFilter
 from PIL.ImageOps import invert
 from tqdm import tqdm
@@ -96,7 +97,7 @@ def concat_images(*photos, mode="h"):
 
     return res
 
-def save_plot(loss_dict, opt):
+def plot_loss(loss_dict, opt):
 	x = np.array(range(opt.initial_epoch, opt.initial_epoch+opt.total_epochs))
 	legends = loss_dict.keys()
 	for y in loss_dict.values():
@@ -106,45 +107,91 @@ def save_plot(loss_dict, opt):
 	plt.ylabel("loss")
 	plt.savefig(os.path.join(os.getcwd(),"models",opt.folder_save,"loss.png"))
 
-def eval_pair(real, out):
+def eval_pair(real, out, thresh=None, fuzzy=True):
     o = out.detach().cpu().numpy()
     r = real.detach().cpu().numpy()
-    # threshold = [otsu_threshold(ch) for ch in r]
-    threshold = [0.5 for _ in range(r.shape[0])]
-    o_bin = np.array([o[i]<threshold[i] for i in range(o.shape[0])]).flatten()
-    r_bin = np.array([r[i]<threshold[i] for i in range(r.shape[0])]).flatten()
 
-    accuracy = np.sum(o_bin==r_bin)/o_bin.shape[0]
+    if fuzzy:
+        intersection = np.sum(out * real)
+        denominator = np.sum(out**2 + real**2)
+        union = np.sum(out**2 + real**2 - out*real)
+        
+        accuracy = np.sum(np.minimum(out, real))/np.sum(real)
+        jaccard = intersection / union 
+        dice = 2 * intersection / denominator
+        
 
-    intersection = np.logical_and(o_bin,r_bin)
-    union = np.logical_or(o_bin,r_bin)
+    else:
+        if thresh == 'otsu':
+            threshold = [otsu_threshold(ch) for ch in r]
+        elif type(thresh) == float: 
+            threshold = [thresh for _ in range(r.shape[0])]
+        else:
+            threshold = [0.5 for _ in range(r.shape[0])]
 
-    jaccard = np.sum(intersection)/np.sum(union)
-    dice = 2*np.sum(intersection)/(np.sum(o_bin)+np.sum(r_bin))
+        o_bin = np.array([o[i]<threshold[i] for i in range(o.shape[0])]).flatten()
+        r_bin = np.array([r[i]<threshold[i] for i in range(r.shape[0])]).flatten()
+
+        accuracy = np.sum(o_bin==r_bin)/o_bin.shape[0]
+
+        intersection = np.logical_and(o_bin,r_bin)
+        union = np.logical_or(o_bin,r_bin)
+
+        jaccard = np.sum(intersection)/np.sum(union)
+        dice = 2*np.sum(intersection)/(np.sum(o_bin)+np.sum(r_bin))
 
     return({"accuracy":accuracy, "dice":dice, "jaccard": jaccard})
-   
+
+
+def plot_dist(data, x_label, file_path):
+    mu = np.mean(data)
+    sigma = np.std(data)
+
+    _, ax = plt.subplots()
+
+    x = np.linspace(min(data), max(data), 100)
+
+    pdf = norm.pdf(x, mu, sigma)
+    ax.plot(x, pdf, color='blue', linewidth=2, label='PDF')
+
+    ax.vlines(mu, ymin=0, ymax=pdf[np.argmax(x >= mu)], color='red', linestyle='--', linewidth=1, label=f'$\mu$ = {mu:.2f}')
+    ax.vlines(mu + sigma, ymin=0, ymax=pdf[np.argmax(x >= mu + sigma)], color='green', linestyle='--', linewidth=1, label=f'$\mu + \sigma$ = {mu + sigma:.2f}')
+    ax.vlines(mu - sigma, ymin=0, ymax=pdf[np.argmax(x >= mu - sigma)], color='green', linestyle='--', linewidth=1, label=f'$\mu - \sigma$ = {mu - sigma:.2f}')
+
+    ax.set_ylim([0, 1])
+
+    ax.set_xlabel(x_label)
+    ax.set_ylabel('Probability Density')
+    ax.set_title('Probability Distribution Function')
+
+    ax.legend()
+
+    plt.savefig(file_path)
 
 def print_evaluation(accuracy, dice, jaccard, output_path):
     a = f"Pixel Accuracy => min:{np.min(accuracy)}, max:{np.max(accuracy)}, avg:{np.mean(accuracy)}, std:{np.std(accuracy)}\n"
     d = f"Dice Coeff => min:{np.min(dice)}, max:{np.max(dice)}, avg:{np.mean(dice)}, std:{np.std(dice)}\n"
     j = f"Jaccard Index => min:{np.min(jaccard)}, max:{np.max(jaccard)}, avg:{np.mean(jaccard)}, std:{np.std(jaccard)}\n"
-    with open(os.path.join(output_path,"eval.txt"), 'w') as f:
+    with open(os.path.join(output_path, "eval.txt"), 'w') as f:
         f.writelines([a,d,j])
+    
+    plot_dist(accuracy, "accuracy", os.path.join(output_path, "accuracy_dist.png"))
+    plot_dist(dice, "dice", os.path.join(output_path, "dice_dist.png"))
+    plot_dist(jaccard, "jaccard", os.path.join(output_path, "jaccard_dist.png"))
+
     print (f"Acc: {np.mean(accuracy)}, IoU: {np.mean(jaccard)}, Dice: {np.mean(dice)}")
 
-def test_model(model, dataset, out_path, evaluation=False):
+def test_model(model, dataset, output_path, evaluation=False):
     accuracy = []
     jaccard = []
     dice = []
 
-    if not os.path.exists(os.path.join(out_path, "out")):
-        os.makedirs(os.path.join(out_path, "out"))
-    if not os.path.exists(os.path.join(out_path, "sgt")):
-        os.makedirs(os.path.join(out_path, "sgt"))
-    if not os.path.exists(os.path.join(out_path, "elm")):
-        os.makedirs(os.path.join(out_path, "elm"))
-        
+    if not os.path.exists(os.path.join(output_path, "out")):
+        os.makedirs(os.path.join(output_path, "out"))
+    if not os.path.exists(os.path.join(output_path, "sgt")):
+        os.makedirs(os.path.join(output_path, "sgt"))
+    if not os.path.exists(os.path.join(output_path, "elm")):
+        os.makedirs(os.path.join(output_path, "elm"))
 
     for i, batch in enumerate(tqdm(dataset)):
         real_A, real_B = batch[0], batch[1]
@@ -169,13 +216,13 @@ def test_model(model, dataset, out_path, evaluation=False):
             b_img = visualize(b)
             out_img = visualize(out)
             
-        out_img.save(os.path.join(out_path, "out", f"{i+1}.png"))
-        concat_images(ToPILImage()(a), b_img, out_img).save(os.path.join(out_path, "sgt", f"{i+1}.png"))
+        out_img.save(os.path.join(output_path, "out", f"{i+1}.png"))
+        concat_images(ToPILImage()(a), b_img, out_img).save(os.path.join(output_path, "sgt", f"{i+1}.png"))
 
         if opt.target != 'rgb':        
             b_elements = concat_images(ToPILImage()(b[0]), ToPILImage()(b[1]), ToPILImage()(b[2]))
             out_elements = concat_images(ToPILImage()(out[0]), ToPILImage()(out[1]), ToPILImage()(out[2]))
-            concat_images(b_elements,out_elements, mode="v").save(os.path.join(out_path, "elm", f"{i+1}.png"))
+            concat_images(b_elements,out_elements, mode="v").save(os.path.join(output_path, "elm", f"{i+1}.png"))
     return accuracy, dice, jaccard
 
 if __name__=='__main__':
@@ -195,7 +242,7 @@ if __name__=='__main__':
 
     loss_path = os.path.join(os.getcwd(), "models", opt.folder_save)
     losses = load_arrays(loss_path)
-    save_plot(losses, opt)
+    plot_loss(losses, opt)
 
     output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_save)
     mkdir(output_path)
