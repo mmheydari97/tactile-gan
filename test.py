@@ -112,11 +112,11 @@ def eval_pair(real, out, thresh=None, fuzzy=True):
     r = real.detach().cpu().numpy()
 
     if fuzzy:
-        intersection = np.sum(out * real)
-        denominator = np.sum(out**2 + real**2)
-        union = np.sum(out**2 + real**2 - out*real)
+        intersection = np.sum(o * r)
+        denominator = np.sum(o**2 + r**2)
+        union = np.sum(o**2 + r**2 - o*r)
         
-        accuracy = np.sum(np.minimum(out, real))/np.sum(real)
+        accuracy = np.sum(np.minimum(o, r))/np.sum(r)
         jaccard = intersection / union 
         dice = 2 * intersection / denominator
         
