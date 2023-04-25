@@ -97,15 +97,18 @@ def concat_images(*photos, mode="h"):
 
     return res
 
-def plot_loss(loss_dict, opt):
+def plot_loss(loss_dict, opt, output_path, terms=None):
 	x = np.array(range(opt.initial_epoch, opt.initial_epoch+opt.total_epochs))
-	legends = loss_dict.keys()
-	for y in loss_dict.values():
+	legends = loss_dict.keys() if terms is None else terms
+        
+	for loss in legends:
+		y = loss_dict[loss]
 		plt.plot(x,y)
+
 	plt.legend(legends)
 	plt.xlabel("iteration")
 	plt.ylabel("loss")
-	plt.savefig(os.path.join(os.getcwd(),"models",opt.folder_save,"loss.png"))
+	plt.savefig(os.path.join(output_path, "loss.png"))
 
 def eval_pair(real, out, thresh=None, fuzzy=True):
     o = out.detach().cpu().numpy()
@@ -152,6 +155,7 @@ def plot_dist(data, x_label, file_path):
     x = np.linspace(min(data), max(data), 100)
 
     pdf = norm.pdf(x, mu, sigma)
+    pdf /= np.max(pdf)
     ax.plot(x, pdf, color='blue', linewidth=2, label='PDF')
 
     ax.vlines(mu, ymin=0, ymax=pdf[np.argmax(x >= mu)], color='red', linestyle='--', linewidth=1, label=f'$\mu$ = {mu:.2f}')
@@ -242,11 +246,12 @@ if __name__=='__main__':
 
     loss_path = os.path.join(os.getcwd(), "models", opt.folder_save)
     losses = load_arrays(loss_path)
-    plot_loss(losses, opt)
 
     output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_save)
     mkdir(output_path)
-    
+
+    plot_loss(losses, opt, output_path=output_path terms=["gen", "disc"])
+
     accuracy, dice, jaccard = test_model(gen, dataset, output_path, evaluation=True)
     if len(accuracy)>0:
         print_evaluation(accuracy, dice, jaccard, output_path)
