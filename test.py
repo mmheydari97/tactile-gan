@@ -250,7 +250,7 @@ if __name__=='__main__':
     output_path = os.path.join(os.getcwd(),"Outputs",opt.folder_save)
     mkdir(output_path)
 
-    plot_loss(losses, opt, output_path=output_path terms=["gen", "disc"])
+    plot_loss(losses, opt, output_path=output_path, terms=["gen", "disc"])
 
     accuracy, dice, jaccard = test_model(gen, dataset, output_path, evaluation=True)
     if len(accuracy)>0:
