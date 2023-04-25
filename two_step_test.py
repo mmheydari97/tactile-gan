@@ -67,7 +67,7 @@ if __name__=='__main__':
     photo_path_test= os.path.join(os.getcwd(),opt.data,"test","source")
     dataset = load_data(photo_path_test,opt2, shuffle=False)
 
-    output_path = os.path.join(os.getcwd(),"Outputs",f"{opt.s1_dir}+{opt.s2_dir}")
+    output_path = os.path.join(os.getcwd(),"Outputs",f"{opt.s1_dir}+{opt.s2_dir}_{opt.data}")
     mkdir(output_path)
     
     accuracy, dice, jaccard = test_two_step(gen1, gen2, dataset, output_path, evaluation=True)
