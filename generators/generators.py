@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from generators.UNet import UNet
 from generators.UNet_plusplus import UNet_plusplus
+from generators.BCDUNet import BCDUNet
 
 
 def create_gen(name, in_nc, out_nc, num_filter, activation=True, multigpu=False):
@@ -10,7 +11,10 @@ def create_gen(name, in_nc, out_nc, num_filter, activation=True, multigpu=False)
     
     elif name.lower() == "unet++": 
         netG = UNet_plusplus(input_dim=in_nc, output_dim=out_nc, num_filter=num_filter, activation=activation)
-   
+    
+    elif name.lower() == "bcdunet":
+        netG = BCDUNet(input_dim=in_nc, output_dim=out_nc, num_filter=num_filter, bidirectional= True, activation=activation)
+
     else:
         raise NameError(f"{name} not a valid model")  
         

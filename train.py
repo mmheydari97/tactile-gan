@@ -239,7 +239,7 @@ if __name__ == "__main__":
     parser.add_argument('--lambda_gp', type=float, default=0.1, help="gradient penalty coefficient")
     parser.add_argument("--lambda_per", type=float, default=0.2, help="perceptual loss coefficient")
     parser.add_argument('--w_per', nargs=4, type=float, default=[0,.1,.3,.6], help='perceptual weights')
-    parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet"], help="generator architecture")
+    parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet", "BCDUNet"], help="generator architecture")
     parser.add_argument("--nf", type=int, default=64, help="base number for filter size in the network architecture")
     parser.add_argument("--loss", default="ls", choices=["ls", "ce", "w", "hinge"], help="loss function for ganloss")
     parser.add_argument("--no_aug", default=False, action='store_true', help="if written, we won't augment the dataset")
