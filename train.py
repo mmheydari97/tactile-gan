@@ -123,8 +123,9 @@ class Train_GAN:
                 if regularize:
                     self.optimizer_D.zero_grad()
                     gp_loss = gradient_penalty(self.netD, real_A, real_B, fake_B, self.device, opt.version, lambda_gp=opt.lambda_gp)
-                    loss_D += gp_loss
-                    lossgplist.append(gp_loss.item())
+                    clipped_gp_loss = torch.clamp(gp_loss, min=0, max=1)
+                    loss_D += clipped_gp_loss
+                    lossgplist.append(clipped_gp_loss.item())
                 else:
                     lossgplist.append(0)
 
