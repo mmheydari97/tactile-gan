@@ -12,3 +12,4 @@ scipy
 Pillow
 albumentations
 opencv-python
+tensorflow-datasets
