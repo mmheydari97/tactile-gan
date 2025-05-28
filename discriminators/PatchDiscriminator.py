@@ -37,7 +37,7 @@ class PatchDiscriminator(nn.Module):
         return self.model(img_input)
 
     def add_intermediate_output(self, lay, inp, outp):
-        self.intermediate_outputs.append(torch.autograd.Variable(outp.data, requires_grad=False))
+        self.intermediate_outputs.append(outp.detach().clone())
 		
     def get_intermediate_output(self):
         return self.intermediate_outputs[:4]

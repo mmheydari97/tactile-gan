@@ -29,14 +29,15 @@ class Train_GAN:
         self.dataset = DataLoader(dataset=traindataset, batch_size=opt.batch_size, shuffle=True, num_workers=opt.threads)
 
         self.device = torch.device("cuda:0")
-        self.activation = True if opt.loss != "ce" else False
+        # self.activation = True if opt.loss != "ce" else False
+        self.activation = False if opt.loss in ['w', 'hinge'] else (True if opt.loss != "ce" else False) # Or more simply, True for 'ls'/'ce', False for 'w'/'hinge'
         self.return_filter = True if opt.version == 2 else False
 
         #create generator and discriminator
         self.netG = create_gen(opt.gen, opt.input_dim, opt.output_dim, opt.nf, self.activation)
         self.netG.to(self.device)
         init_weights(self.netG)
-
+ 
         self.netD = create_disc("patch", opt.input_dim, opt.output_dim, opt.nf, return_filter=self.return_filter, activation=self.activation)
         self.netD.to(self.device)
         init_weights(self.netD)
@@ -123,9 +124,9 @@ class Train_GAN:
                 if regularize:
                     self.optimizer_D.zero_grad()
                     gp_loss = gradient_penalty(self.netD, real_A, real_B, fake_B, self.device, opt.version, lambda_gp=opt.lambda_gp)
-                    clipped_gp_loss = torch.clamp(gp_loss, min=0, max=1)
-                    loss_D += clipped_gp_loss
-                    lossgplist.append(clipped_gp_loss.item())
+                    # clipped_gp_loss = torch.clamp(gp_loss, min=0, max=1)
+                    loss_D += gp_loss
+                    lossgplist.append(gp_loss.item())
                 else:
                     lossgplist.append(0)
 
@@ -145,17 +146,19 @@ class Train_GAN:
                 lossl1list.append(loss_G_L1.item())
 
                 loss_G = loss_G_GAN + loss_G_L1 * opt.lambda_a
+                
                 if opt.lambda_per != 0:
                     if opt.version == 1:
                         features_fake = fake_B
-                        features_real = real_A
+                        features_real = real_B
                     else:
                         features_fake = self.netD.get_intermediate_output()
                         _ = self.netD(real_A, real_B)
                         features_real = self.netD.get_intermediate_output()
                     
-                    per_loss = self.perceptual_loss(features_real, features_fake, weights=opt.w_per)
-                    loss_G += per_loss * opt.lambda_per
+                    # per_loss = self.perceptual_loss(features_real, features_fake, weights=opt.w_per) * opt.lambda_per
+                    per_loss = self.perceptual_loss((features_real + 1) / 2.0, (features_fake + 1) / 2.0, weights=opt.w_per) * opt.lambda_per
+                    loss_G += per_loss
                     lossperlist.append(per_loss.item())
                 else:
                     lossperlist.append(0)
@@ -234,10 +237,10 @@ if __name__ == "__main__":
     parser.add_argument("--epoch_constant", type=int, default=25, help="how many epochs we keep the learning rate constant")
     parser.add_argument("--lr", type=float, default=0.002, help="learning rate")
     parser.add_argument("--no_label_smoothing", default=False, action='store_true', help="if written, we will not use one sided label smoothing")
-    parser.add_argument("--beta1", type=float, default=0.01, help="beta1 for our Adam optimizer")
+    parser.add_argument("--beta1", type=float, default=0.9, help="beta1 for our Adam optimizer")
     parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
-    parser.add_argument("--lambda_a", type=float, default=5, help="L1 loss coefficient")
-    parser.add_argument('--lambda_gp', type=float, default=0.1, help="gradient penalty coefficient")
+    parser.add_argument("--lambda_a", type=float, default=0.8, help="L1 loss coefficient")
+    parser.add_argument('--lambda_gp', type=float, default=0.001, help="gradient penalty coefficient")
     parser.add_argument("--lambda_per", type=float, default=0.2, help="perceptual loss coefficient")
     parser.add_argument('--w_per', nargs=4, type=float, default=[0,.1,.3,.6], help='perceptual weights')
     parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet", "BCDUNet"], help="generator architecture")
