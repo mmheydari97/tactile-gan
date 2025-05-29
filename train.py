@@ -152,12 +152,13 @@ class Train_GAN:
                         features_fake = fake_B
                         features_real = real_B
                     else:
-                        features_fake = self.netD.get_intermediate_output()
+                        features_fake = [(f_map + 1)/2 for f_map in self.netD.get_intermediate_output()]
                         _ = self.netD(real_A, real_B)
-                        features_real = self.netD.get_intermediate_output()
-                    
+                        features_real = [(f_map + 1)/2 for f_map in self.netD.get_intermediate_output()]
+                        
                     # per_loss = self.perceptual_loss(features_real, features_fake, weights=opt.w_per) * opt.lambda_per
-                    per_loss = self.perceptual_loss((features_real + 1) / 2.0, (features_fake + 1) / 2.0, weights=opt.w_per) * opt.lambda_per
+                    per_loss = self.perceptual_loss(features_real, features_fake, weights=opt.w_per) * opt.lambda_per
+                    
                     loss_G += per_loss
                     lossperlist.append(per_loss.item())
                 else:
@@ -235,13 +236,13 @@ if __name__ == "__main__":
     parser.add_argument("--initial_epoch", type=int, default=1, help="starting epoch, useful if we're loading in a half trained model, we can change starting epoch")
     parser.add_argument("--total_epochs", type=int, default=135, help="total epochs we're training for")
     parser.add_argument("--epoch_constant", type=int, default=25, help="how many epochs we keep the learning rate constant")
-    parser.add_argument("--lr", type=float, default=0.002, help="learning rate")
+    parser.add_argument("--lr", type=float, default=0.001, help="learning rate")
     parser.add_argument("--no_label_smoothing", default=False, action='store_true', help="if written, we will not use one sided label smoothing")
     parser.add_argument("--beta1", type=float, default=0.9, help="beta1 for our Adam optimizer")
     parser.add_argument("--threads", type=int, default=8, help="cpu threads for loading the dataset")
-    parser.add_argument("--lambda_a", type=float, default=0.8, help="L1 loss coefficient")
-    parser.add_argument('--lambda_gp', type=float, default=0.001, help="gradient penalty coefficient")
-    parser.add_argument("--lambda_per", type=float, default=0.2, help="perceptual loss coefficient")
+    parser.add_argument("--lambda_a", type=float, default=1, help="L1 loss coefficient")
+    parser.add_argument('--lambda_gp', type=float, default=0.01, help="gradient penalty coefficient")
+    parser.add_argument("--lambda_per", type=float, default=1, help="perceptual loss coefficient")
     parser.add_argument('--w_per', nargs=4, type=float, default=[0,.1,.3,.6], help='perceptual weights')
     parser.add_argument("--gen", default="UNet++", choices=["UNet++", "UNet", "BCDUNet"], help="generator architecture")
     parser.add_argument("--nf", type=int, default=64, help="base number for filter size in the network architecture")
@@ -253,7 +254,7 @@ if __name__ == "__main__":
     parser.add_argument("--folder_load", default="pix2obj", help="where we want to load the model from")
     parser.add_argument("--checkpoint_interval", type=int, default=-1, help="interval between model checkpoints")
     parser.add_argument("--continue_training", default=False, action='store_true', help="if written, we will load the weights for the network brfore training")
-    parser.add_argument('--reg_every', type=int, default=4, help='set how frequently we regularize the network using gp')
+    parser.add_argument('--reg_every', type=int, default=1, help='set how frequently we regularize the network using gp')
 
     opt = parser.parse_args()
 

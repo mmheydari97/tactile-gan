@@ -30,15 +30,18 @@ class PairedDataset(Dataset):
         if aug:
             mask_value = (255,255,255) if self.target=='rgb' else (0,0,0)
             self.aug_t = A.Compose([
-                            A.HorizontalFlip(p=0.5),
-                            A.ShiftScaleRotate(shift_limit=0.1,
-                                                          scale_limit=0.2,
-                                                          rotate_limit=15,
-                                                          border_mode=cv2.BORDER_CONSTANT,
-                                                          value=(255,255,255),
-                                                          mask_value=mask_value,
-                                                          p=0.5),])
-
+                A.HorizontalFlip(p=0.5),
+                A.Affine(
+                    translate_percent=0.1,     
+                    scale=(0.8, 1.2),          
+                    rotate=(-15, 15),        
+                    fit_output=False,
+                    mode=cv2.BORDER_CONSTANT,
+                    cval=(255, 255, 255),    # uncomment if you want to fill with white
+                    cval_mask=mask_value,    # uncomment if you want to use a specific mask fill
+                    p=0.5
+                ),
+            ])
     @staticmethod
     def _is_image(filename):
         img_extensions = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.svg', '.tiff']
