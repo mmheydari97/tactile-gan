@@ -152,9 +152,9 @@ class Train_GAN:
                         features_fake = fake_B
                         features_real = real_B
                     else:
-                        features_fake = [(f_map + 1)/2 for f_map in self.netD.get_intermediate_output()]
+                        features_fake = self.netD.get_intermediate_output()
                         _ = self.netD(real_A, real_B)
-                        features_real = [(f_map + 1)/2 for f_map in self.netD.get_intermediate_output()]
+                        features_real = self.netD.get_intermediate_output()
                         
                     # per_loss = self.perceptual_loss(features_real, features_fake, weights=opt.w_per) * opt.lambda_per
                     per_loss = self.perceptual_loss(features_real, features_fake, weights=opt.w_per) * opt.lambda_per
