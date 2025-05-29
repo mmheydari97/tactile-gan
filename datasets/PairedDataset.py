@@ -1,10 +1,10 @@
 import os
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image #, ImageOps
 from torch.utils.data import Dataset
 from torchvision import transforms
-import torch
-import cv2
+# import torch
+# import cv2
 import albumentations as A
 
 
@@ -28,7 +28,7 @@ class PairedDataset(Dataset):
         self.images = images
 
         if aug:
-            mask_value = (255,255,255) if self.target=='rgb' else (0,0,0)
+            # mask_value = (255,255,255) if self.target=='rgb' else (0,0,0)
             self.aug_t = A.Compose([
                 A.HorizontalFlip(p=0.5),
                 A.Affine(
@@ -36,9 +36,9 @@ class PairedDataset(Dataset):
                     scale=(0.8, 1.2),          
                     rotate=(-15, 15),        
                     fit_output=False,
-                    mode=cv2.BORDER_CONSTANT,
-                    cval=(255, 255, 255),    # uncomment if you want to fill with white
-                    cval_mask=mask_value,    # uncomment if you want to use a specific mask fill
+                    # mode=cv2.BORDER_CONSTANT,
+                    # cval=(255, 255, 255),    # uncomment if you want to fill with white
+                    # cval_mask=mask_value,    # uncomment if you want to use a specific mask fill
                     p=0.5
                 ),
             ])
